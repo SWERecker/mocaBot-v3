@@ -20,7 +20,7 @@ rc = redis.Redis(connection_pool=cache_pool)
 logger = logging.getLogger('botlogger')
 
 
-async def update_config(group_id: int, arg: str, value):
+def update_config(group_id: int, arg: str, value):
     """
     向Redis中更新某参数.
 
@@ -96,7 +96,7 @@ async def update_lp(qq: int, lp_name: str):
     logger.info(f"修改lp记录：用户{qq}设置lp为:{lp_name}")
 
 
-async def fetch_lp(qq: int) -> str:
+def fetch_lp(qq: int) -> str:
     """
     获取设置的lp.
 
@@ -150,7 +150,7 @@ async def init_files_list():
     return True
 
 
-async def remove_keyword(group_id: int, key: str, value: str) -> str:
+def remove_keyword(group_id: int, key: str, value: str) -> str:
     """
     删除某人物关键词列表中的某个关键词.
 
@@ -173,12 +173,12 @@ async def remove_keyword(group_id: int, key: str, value: str) -> str:
         return "WORD_NOT_EXIST"
 
 
-async def append_keyword(group_id: int, key: str, value: str) -> str:
+def append_keyword(group_id: int, key: str, value: str) -> str:
     """
     向某个人物的关键词列表中添加关键词.
 
     :param group_id: QQ群号
-    :param key: 名称,
+    :param key: 名称
     :param value: 关键词
     :return: KEY_NOT_EXIST: 名称不存在; DUPLICATE_KEY: 关键词重复; SUCCESS: 成功
     """
@@ -257,16 +257,18 @@ async def lp_list_rank():
     return result
 
 
-async def rand_pic(name: str) -> str:
+def rand_pic(name: str) -> str:
     """
     从图片库中随机抽取一张
 
     :param name: 名称
-    :return 图片文件名（名称不存在时返回"NAME_NOT_FOUND"）
+    :return: 图片文件名（名称不存在时返回"NAME_NOT_FOUND"）
     """
     if not rc.hexists("FILES", name):
         return "NAME_NOT_FOUND"
-    return random.choice(random.shuffle(json.loads(rc.hget("FILES", name))))
+    file_list = json.loads(rc.hget("FILES", name))
+    random.shuffle(file_list)
+    return random.choice(file_list)
 
 
 def fetch_clp_times(qq: int) -> int:
