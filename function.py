@@ -6,6 +6,9 @@ import redis
 import random
 import json
 
+from graia.application import MessageChain
+from graia.application.message.elements.internal import ImageType
+
 import config
 from PIL import Image as ImageLib
 from PIL import ImageDraw, ImageFont
@@ -293,7 +296,7 @@ def match_lp(group_id: int, lp_name: str) -> str:
     :return: 最接近的名称，若匹配不到则返回NOT_FOUND
     """
     simi_dict = {}
-    keyword_list = r.hget("KEYWORDS", group_id)
+    keyword_list = json.loads(r.hget("KEYWORDS", group_id))
     for keys in keyword_list:  # 在字典中遍历查找
         for e in range(len(keyword_list[keys])):  # 遍历名称
             seed = difflib.SequenceMatcher(None, str(lp_name), keyword_list[keys][e]).quick_ratio()
@@ -364,3 +367,58 @@ def create_dict_pic(data: dict, group_id_with_type: str, title: str):
     draw.multiline_text((space, space), tab_info, fill=(0, 0, 0), font=font)
     im_new.save(new_img_file, "png")
     del draw
+
+
+def repeater(group_id: int, message: MessageChain) -> (bool, bool):
+    """
+    复读机.
+
+    :param group_id: QQ群号
+    :param message: 消息的MessageChain
+    :return (bool: 是否复读, bool: 是否附带复读图片)
+    """
+    if not rc.hexists(group_id, "m_count"):
+        rc.hset(group_id, "m_count", '0')
+        rc.hset(group_id, "m_last_repeat", 'content')
+
+    m_count = rc.hget(group_id, "m_count")
+
+    message_data = message.dict()['__root__']
+    del message_data[0]
+    for index in range(len(message_data)):
+        if message_data[index].get('type') == ImageType.Group:
+            del message_data[index]['path']
+            del message_data[index]['url']
+            message_data[index]['type'] = 'Image'
+
+    print(message_data)
+    json_processed_message_chain = json.dumps(message_data, ensure_ascii=False)
+    if m_count == '0':
+        rc.hset(group_id, "m_cache_0", json_processed_message_chain)
+        rc.hset(group_id, "m_count", '1')  # 消息计数+1
+    if m_count == '1':
+        rc.hset(group_id, "m_cache_1", json_processed_message_chain)
+        rc.hset(group_id, "m_count", '2')
+    if m_count == '2':
+        rc.hset(group_id, "m_cache_0", rc.hget(group_id, "m_cache_1"))
+        rc.hset(group_id, "m_cache_1", json_processed_message_chain)
+    # 缓存消息 ===
+
+    m_cache_0 = rc.hget(group_id, "m_cache_0")
+    m_cache_1 = rc.hget(group_id, "m_cache_1")
+
+    if not rc.hget(group_id, "m_last_repeat") == json_processed_message_chain:
+        if m_cache_0 == m_cache_1:
+            if not is_in_cd(group_id, "repeatCD"):
+                if random_do(fetch_config(group_id, "repeatChance")):
+                    logger.debug(f"[{group_id}] 命中复读条件且不在cd中且命中概率，需要复读")
+                    rc.hset(group_id, "m_last_repeat", json_processed_message_chain)
+                    if random_do(5):
+                        return True, True
+                    else:
+                        return True, False
+                else:
+                    logger.debug(f"[{group_id}] 未命中复读概率")
+            else:
+                logger.debug(f"[{group_id}] 复读cd冷却中")
+    return False, False
