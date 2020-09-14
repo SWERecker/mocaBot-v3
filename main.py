@@ -21,6 +21,7 @@ logger.info("日志初始化成功")
 #  日志部分
 
 string = '/\:*<>|"'
+file_list_update_time = -1
 
 loop = asyncio.get_event_loop()
 
@@ -40,9 +41,10 @@ app = GraiaMiraiApplication(
 # noinspection PyBroadException
 @bcc.receiver("GroupMessage")
 async def group_message_handler(app: GraiaMiraiApplication, message: MessageChain, group: Group, member: Member):
+    global file_list_update_time
     text = message.asDisplay().replace(" ", "").lower()
     group_id = group.id
-    print(text)
+
     if message.has(At):
         at_data = message.get(At)[0].dict()
         at_target = at_data['target']
@@ -52,7 +54,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             logger.debug(f"[{group_id}] At了毛力")
             if member.permission == MemberPerm.Administrator or \
                     member.permission == MemberPerm.Owner or \
-                    member.id == config.superman:
+                    is_superman(member.id):
                 logger.debug(f"[{group_id}] 管理员At了毛力")
 
                 #   管理员At操作开始
@@ -103,7 +105,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                         Image.fromLocalFile(os.path.join(config.temp_path, f'{group_id}_piccount.png'))
                     ]))
                 else:
-                    logger.debug(f"[{group_id}] 统计次数cd冷却中")
+                    logger.debug(f"[{group_id}] 帮助类cd冷却中")
                 return
 
             #   毛力爬
@@ -149,6 +151,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             #   是否At机器人：是
             if '提交图片' in text:
                 error_flag = False
+                error_info = ""
                 if len(text) > 4:
                     logger.info(f"[{group_id}] 提交图片")
                     data_list = []
@@ -171,8 +174,8 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                             data_list.append({
                                 "url": message_data[index].get("url"),
                                 "file_name": message_data[index].get("imageId").split(".")[0]
-                                    .replace("{", "")
-                                    .replace("}", "")
+                                .replace("{", "")
+                                .replace("}", "")
                             })
                     if not bool(data_list):
                         await app.sendGroupMessage(group, MessageChain.create([
@@ -189,17 +192,18 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                         try:
                             await save_image(data_list[file_index]["url"],
                                              data_list[file_index]["file_name"], save_path)
-                        except Exception:
+                        except Exception as e:
                             logger.error(str(traceback.format_exc()))
                             error_flag = True
+                            error_info = repr(e)
                     if error_flag:
                         await app.sendGroupMessage(group, MessageChain.create([
-                            Plain('错误：提交失败')
+                            Plain(f'错误：提交失败，错误：{error_info}')
                         ]))
                     else:
                         file_count = len(data_list)
                         await app.sendGroupMessage(group, MessageChain.create([
-                            Plain(f'成功，收到{file_count}张图片')
+                            Plain(f'提交成功，收到{file_count}张图片')
                         ]))
                 else:
                     await app.sendGroupMessage(group, MessageChain.create([
@@ -231,7 +235,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     #   普通操作开始
     if member.permission == MemberPerm.Administrator or \
             member.permission == MemberPerm.Owner or \
-            member.id == config.superman:
+            is_superman(member.id):
         #   管理员普通操作开始
 
         #   设置图片cd
@@ -432,7 +436,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             ]))
             return
         if lp_name in json.loads(r.hget('KEYWORDS', group_id)):
-            if member.id == config.superman:  # 特 权 阶 级
+            if is_superman(member.id):  # 特 权 阶 级
                 files = [rand_pic(lp_name), rand_pic(lp_name), rand_pic(lp_name)]
                 await app.sendGroupMessage(group, MessageChain.create([
                     Image.fromLocalFile(os.path.join(config.pic_path, lp_name, files[0])),
@@ -467,7 +471,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                 ]))
             else:
                 await app.sendGroupMessage(group, MessageChain.create([
-                    Plain(f'你设置的lp为: {lp_name}')
+                    Plain(f'你设置的lp为：{lp_name}')
                 ]))
         else:
             true_lp_name = match_lp(group_id, lp_name)
@@ -480,6 +484,69 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                 await app.sendGroupMessage(group, MessageChain.create([
                     Plain(f'用户{member.name}设置lp为：{true_lp_name}')
                 ]))
+        return
+    #   加载关键词
+    group_keywords = json.loads(r.hget('KEYWORDS', group_id))
+
+    #   选择图片
+    #   权限：成员
+    #   是否At机器人：否
+    if len(text) > 4 and text.startswith("选择图片"):
+        paras = text[4:].replace('，', ',').split(',')
+        if not len(paras) == 2:
+            await app.sendGroupMessage(group, MessageChain.create([
+                Plain('错误：参数数量错误。示例：选择图片 愛美，1')
+            ]))
+            return
+        else:
+            name = paras[0]
+            number = paras[1]
+            if name in group_keywords:
+                file_list = json.loads(rc.hget("FILES", name))
+                if not is_in_cd(group_id, "replyCD") or is_superman(member.id):  # 判断是否在回复图片的cd中
+                    try:
+                        file_count = int(number)
+                    except ValueError:
+                        num_file = len(file_list)
+                        await app.sendGroupMessage(group, MessageChain.create([
+                            Plain(f'图片序号格式错误，{name}共有{num_file}张图片，序号应为1~{num_file}')
+                        ]))
+                        return
+                    if file_count > len(file_list):
+                        num_file = len(file_list)
+                        await app.sendGroupMessage(group, MessageChain.create([
+                            Plain(f'图片序号超过文件数量，{name}共有{num_file}张图片，序号应为1~{num_file}')
+                        ]))
+                        return
+                    #   转换数字->文件名（补齐4位数字）
+                    if file_count < 10:
+                        file_name = "000{}".format(file_count)
+                    elif 10 <= file_count < 100:
+                        file_name = "00{}".format(file_count)
+                    elif 100 <= file_count < 1000:
+                        file_name = "0{}".format(file_count)
+                    else:
+                        file_name = "{}".format(file_count)
+                    filename = "NOT_FOUND"
+                    for file in file_list:
+                        if file_name in file:
+                            filename = file
+                            break
+                    if not filename == "NOT_FOUND":
+                        logger.info(f"[{group_id}] 请求：{name} => {filename}")
+                        await update_count(group_id, name)  # 更新统计次数
+                        await update_cd(group_id, "replyCD")  # 更新cd
+                        await app.sendGroupMessage(group, MessageChain.create([
+                            Image.fromLocalFile(os.path.join(config.pic_path, name, filename))
+                        ]))
+                    else:
+                        await app.sendGroupMessage(group, MessageChain.create([
+                            Plain("错误：请求的文件不存在（可能是最新图片尚未缓存进入数据库）")
+                        ]))
+            else:
+                await app.sendGroupMessage(group, MessageChain.create([
+                            Plain("错误：名称不存在（名称必须为关键词列表第一列中的名称）")
+                        ]))
         return
 
     #   查看自己换lp次数
@@ -502,11 +569,10 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     #   遍历查询是否在关键词列表中并发送图片
     #   权限：成员
     #   是否At机器人：否
-    group_keywords = json.loads(r.hget('KEYWORDS', group_id))
     for keys in group_keywords:  # 在字典中遍历查找
         for e in range(len(group_keywords[keys])):  # 遍历名称
             if text == group_keywords[keys][e]:  # 若命中名称
-                if not is_in_cd(group_id, "replyCD") or member.id == config.superman:  # 判断是否在回复图片的cd中
+                if not is_in_cd(group_id, "replyCD") or is_superman(member.id):  # 判断是否在回复图片的cd中
                     pic_name = rand_pic(keys)
                     logger.info(f"[{group_id}] 请求：{keys} , {pic_name}")
                     await app.sendGroupMessage(group, MessageChain.create([
@@ -519,7 +585,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     for keys in group_keywords:  # 在字典中遍历查找
         for e in range(len(group_keywords[keys])):  # 遍历名称
             if group_keywords[keys][e] in text:  # 若命中名称
-                if not is_in_cd(group_id, "replyCD") or member.id == config.superman:  # 判断是否在回复图片的cd中
+                if not is_in_cd(group_id, "replyCD") or is_superman(member.id):  # 判断是否在回复图片的cd中
                     pic_name = rand_pic(keys)
                     logger.info(f"[{group_id}] 请求：{keys} , {pic_name}")
                     await app.sendGroupMessage(group, MessageChain.create([
@@ -535,7 +601,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     quo_data = r.hgetall('QUOTATION_LIST')
     for name in quo_data:
         if text in quo_data[name]:
-            if not is_in_cd(group_id, "replyCD") or member.id == config.superman:
+            if not is_in_cd(group_id, "replyCD") or is_superman(member.id):
                 quo_words = r.hget("QUOTATION", name).split(',')
                 quote = random.choice(quo_words)
                 await app.sendGroupMessage(group, MessageChain.create([
@@ -546,6 +612,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                 await update_count(group_id, name)  # 更新统计次数
             return
 
+    #   复读机
     # data = repeater(group_id, message)
     # if data[0]:
     #     if data[1]:
@@ -558,6 +625,15 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     #   非管理员普通操作结束
 
     #   普通操作结束
+    #   每300秒更新一次图片列表
+    if file_list_update_time == -1:
+        file_list_update_time = int(time.time())
+        await update_file_list()
+    else:
+        time_now = int(time.time())
+        if time_now - file_list_update_time > 300:
+            file_list_update_time = int(time.time())
+            await update_file_list()
 
 
 app.launch_blocking()

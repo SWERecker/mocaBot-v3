@@ -137,11 +137,11 @@ def init_config(group_id: int):
         r.hset("CONFIG", group_id, r.hget("CONFIG", "config_template"))
 
 
-async def init_files_list():
+async def update_file_list():
     """
     读取文件列表缓存至Redis数据库.
 
-    :return: True
+    :return: None
     """
     names_list = os.listdir(config.pic_path)
     for name in names_list:
@@ -150,8 +150,6 @@ async def init_files_list():
             rc.hset("FILES", name, json.dumps(file_list, ensure_ascii=False))
             logger.debug(f"建立 {name} 文件列表缓存")
     logger.info('重建图片索引完成')
-    rc.set('file_list_init', '1', ex=600)  # 设置600秒缓存cd
-    return True
 
 
 def remove_keyword(group_id: int, key: str, value: str) -> str:
@@ -372,7 +370,7 @@ def create_dict_pic(data: dict, group_id_with_type: str, title: str):
 
 def repeater(group_id: int, message: MessageChain) -> (bool, bool):
     """
-    复读机.
+    复读机.(EXPERIMENTAL)(NOT_AVAILABLE)
 
     :param group_id: QQ群号
     :param message: 消息的MessageChain
@@ -426,9 +424,31 @@ def repeater(group_id: int, message: MessageChain) -> (bool, bool):
 
 
 async def save_image(url: str, file_name: str, file_path: str):
+    """
+    保存提交的图片.
+
+    :param url: 图片URL
+    :param file_name: 图片保存的名称
+    :param file_path: 图片保存路径（文件夹）
+    :return: None
+    """
     res = requests.get(url)
     content_type = res.headers.get("Content-Type")
     file_type = content_type.split('/')[1]
     logger.info(f"保存：{file_name}.{file_type}")
     with open(os.path.join(file_path, f"{file_name}.{file_type}"), "wb") as image_file:
         image_file.write(res.content)
+
+
+def is_superman(member_id: int) -> bool:
+    """
+    判断是否是特权阶级.
+
+    :param member_id: 用户QQ
+
+    :return: True/False
+    """
+    if str(member_id) in rc.smembers("SUPERMAN"):
+        return True
+    else:
+        return False
