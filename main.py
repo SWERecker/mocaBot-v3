@@ -1,11 +1,11 @@
 import asyncio
-import os
-from graia.application import GraiaMiraiApplication, Session, Friend
-from graia.application.message.chain import MessageChain
+import time
+import traceback
+
+from graia.application import GraiaMiraiApplication, Session
 from graia.application.group import Group, Member, MemberPerm
-from graia.application.message.elements.internal import Plain, Image, At, Face, ImageType
+from graia.application.message.elements.internal import Plain, Image, At
 from graia.broadcast import Broadcast
-import config
 from function import *
 from logging import handlers
 import logging
@@ -37,6 +37,7 @@ app = GraiaMiraiApplication(
 )
 
 
+# noinspection PyBroadException
 @bcc.receiver("GroupMessage")
 async def group_message_handler(app: GraiaMiraiApplication, message: MessageChain, group: Group, member: Member):
     text = message.asDisplay().replace(" ", "").lower()
@@ -152,71 +153,58 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                     logger.info(f"[{group_id}] 提交图片")
                     data_list = []
 
-                    category = text[text.index("提交图片"):].lstrip("提交图片")
+                    category = text[text.index("提交图片"):].lstrip("提交图片").replace("[图片]", "")
                     if category == "":
                         await app.sendGroupMessage(group, MessageChain.create([
-                            Plain("请附带分类，例如：@毛力 提交图片 群友b话，再加上图片")
+                            Plain("错误：请附带分类，例如：@毛力 提交图片 群友b话，再加上图片")
                         ]))
+                        return
                     for n in category:
                         if n in string:
                             await app.sendGroupMessage(group, MessageChain.create([
-                                Plain("名称中含有非法字符，请检查")
+                                Plain("错误：名称中含有非法字符，请检查")
                             ]))
                             return
                     message_data = message.dict()['__root__']
-                    del message_data[0]
-
                     for index in range(len(message_data)):
                         if message_data[index].get('type') == ImageType.Group:
-                            cache_data = {
+                            data_list.append({
                                 "url": message_data[index].get("url"),
-                                "file_name": message_data[index].get("imageId").split(".")[0].replace("{", "").replace("}",
-                                                                                                                    "")
-                            }
-
-
-                    for n in range(len(message_chain)):
-                        if message_chain[n].get("type") == "Image":
-                            cache_data = {
-                                "url": message_chain[n].get("url"),
-                                "file_name": message_chain[n].get("imageId").split(".")[0].replace("{", "").replace("}",
-                                                                                                                    "")
-                            }
-                            logger.info("[{}] 收到：{}".format(group_id, cache_data))
-                            data_list.append(cache_data)
+                                "file_name": message_data[index].get("imageId").split(".")[0]
+                                    .replace("{", "")
+                                    .replace("}", "")
+                            })
                     if not bool(data_list):
-                        mirai_reply_text(group_id, session_key, '没有图片')
+                        await app.sendGroupMessage(group, MessageChain.create([
+                            Plain("错误：没有图片")
+                        ]))
                         return
                     # upload/{群号}/月/日/{imageId}
                     month = time.strftime("%m")
                     day = time.strftime("%d")
-                    if not os.path.exists("upload\\{}\\{}\\{}\\{}".format(group_id, month, day, category)):
-                        os.makedirs("upload\\{}\\{}\\{}\\{}".format(group_id, month, day, category))
-
+                    save_path = os.path.join(config.temp_path, "upload", str(group_id), month, day, category)
+                    if not os.path.exists(save_path):
+                        os.makedirs(save_path)
                     for file_index in range(len(data_list)):
                         try:
-                            res = requests.get(data_list[file_index]["url"])
-                            content_type = res.headers.get("Content-Type")
-                            file_type = content_type.split('/')[1]
-                            logger.info("saving {}.{}".format(data_list[file_index]["file_name"], file_type))
-                            logger.info("保存路径：upload\\{}\\{}\\{}\\{}\\{}.{}".format(
-                                group_id, month, day, category, data_list[file_index]["file_name"], file_type))
-
-                            with open("upload\\{}\\{}\\{}\\{}\\{}.{}".format(
-                                    group_id, month, day, category, data_list[file_index]["file_name"], file_type
-                            ), "wb") as image_file:
-                                image_file.write(res.content)
-                        except:
+                            await save_image(data_list[file_index]["url"],
+                                             data_list[file_index]["file_name"], save_path)
+                        except Exception:
                             logger.error(str(traceback.format_exc()))
                             error_flag = True
-
                     if error_flag:
-                        mirai_reply_text(group_id, session_key, '提交失败')
+                        await app.sendGroupMessage(group, MessageChain.create([
+                            Plain('错误：提交失败')
+                        ]))
                     else:
                         file_count = len(data_list)
-                        mirai_reply_text(group_id, session_key, '成功，收到{}张图片'.format(file_count))
+                        await app.sendGroupMessage(group, MessageChain.create([
+                            Plain(f'成功，收到{file_count}张图片')
+                        ]))
                 else:
-                    mirai_reply_text(group_id, session_key, '参数错误')
+                    await app.sendGroupMessage(group, MessageChain.create([
+                        Plain(f'错误：参数错误')
+                    ]))
                 return
             #   非必须管理员At操作结束
         else:

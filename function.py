@@ -6,6 +6,7 @@ import redis
 import random
 import json
 
+import requests
 from graia.application import MessageChain
 from graia.application.message.elements.internal import ImageType
 
@@ -422,3 +423,12 @@ def repeater(group_id: int, message: MessageChain) -> (bool, bool):
             else:
                 logger.debug(f"[{group_id}] 复读cd冷却中")
     return False, False
+
+
+async def save_image(url: str, file_name: str, file_path: str):
+    res = requests.get(url)
+    content_type = res.headers.get("Content-Type")
+    file_type = content_type.split('/')[1]
+    logger.info(f"保存：{file_name}.{file_type}")
+    with open(os.path.join(file_path, f"{file_name}.{file_type}"), "wb") as image_file:
+        image_file.write(res.content)
