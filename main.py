@@ -12,11 +12,11 @@ import logging
 
 #  日志部分
 loghandler = handlers.TimedRotatingFileHandler(os.path.join('log', 'mocaBot.log'), when='midnight', encoding='utf-8')
-loghandler.setLevel(logging.DEBUG)
+loghandler.setLevel(logging.INFO)
 loghandler.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s]: %(message)s'))
 logger = logging.getLogger('botlogger')
 logger.addHandler(loghandler)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 logger.info("日志初始化成功")
 #  日志部分
 
@@ -44,6 +44,9 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     global file_list_update_time
     text = message.asDisplay().replace(" ", "").lower()
     group_id = group.id
+    #   Temporary
+    if not rc.sismember("GROUPS", str(group_id)):
+        rc.sadd('GROUPS', str(group_id))
 
     if message.has(At):
         at_data = message.get(At)[0].dict()
@@ -600,17 +603,17 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     #   是否At机器人：否
     quo_data = r.hgetall('QUOTATION_LIST')
     for name in quo_data:
-        if text in quo_data[name]:
-            if not is_in_cd(group_id, "replyCD") or is_superman(member.id):
-                quo_words = r.hget("QUOTATION", name).split(',')
-                quote = random.choice(quo_words)
-                await app.sendGroupMessage(group, MessageChain.create([
-                    Plain(quote.strip())
-                ]))
-
-                logger.info(f"[{group_id}] 请求：{name}")
-                await update_count(group_id, name)  # 更新统计次数
-            return
+        for key in quo_data[name].split(","):
+            if key in text:
+                if not is_in_cd(group_id, "replyCD") or is_superman(member.id):
+                    quo_words = r.hget("QUOTATION", name).split(',')
+                    quote = random.choice(quo_words)
+                    await app.sendGroupMessage(group, MessageChain.create([
+                        Plain(quote.strip())
+                    ]))
+                    logger.info(f"[{group_id}] 请求：{name}")
+                    await update_count(group_id, name)  # 更新统计次数
+                return
 
     #   复读机
     # data = repeater(group_id, message)
