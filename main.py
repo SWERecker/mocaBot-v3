@@ -48,7 +48,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     #   Temporary
     if not rc.sismember("GROUPS", str(group_id)):
         rc.sadd('GROUPS', str(group_id))
-    
+
     #   初始化群组参数数据
     if not r.hexists("KEYWORDS", str(group_id)):
         r.hset("KEYWORDS", str(group_id), r.hget("KEYWORDS", "keyword_template"))
@@ -67,7 +67,6 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                 logger.debug(f"[{group_id}] 管理员At了毛力")
 
                 #   管理员At操作开始
-
                 #   管理员At操作结束
 
             #   非必须管理员At操作开始
@@ -183,8 +182,8 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                             data_list.append({
                                 "url": message_data[index].get("url"),
                                 "file_name": message_data[index].get("imageId").split(".")[0]
-                                .replace("{", "")
-                                .replace("}", "")
+                                    .replace("{", "")
+                                    .replace("}", "")
                             })
                     if not bool(data_list):
                         await app.sendGroupMessage(group, MessageChain.create([
@@ -239,6 +238,69 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                         Plain(f"{at_target_name}还没有换过lp呢~")
                     ]))
                 return
+
+            #   口他
+            #   权限：管理员/群主/superman
+            #   是否At机器人：否
+            #   需At任意群员且机器人为管理员
+            plain_text = message.get(Plain)
+            if len(plain_text) > 0:
+                p_text = plain_text[0].dict()['text']\
+                    .replace(" ", "")\
+                    .replace("他", "ta")\
+                    .replace("她", "ta")\
+                    .replace("它", "ta")
+                if "禁言" in p_text or "口ta" in p_text:
+                    if (group.accountPerm == MemberPerm.Administrator or group.accountPerm == MemberPerm.Owner) and \
+                            (member.permission == MemberPerm.Administrator or member.permission == MemberPerm.Owner):
+                        #   需同时机器人是管理员且操作者为管理员
+                        target: Member = await app.getMember(group_id, at_target)
+                        if target.permission == MemberPerm.Member:
+                            if p_text.endswith("秒"):
+                                time_type = "s"
+                            elif p_text.endswith("分钟"):
+                                time_type = "min"
+                            elif p_text.endswith("小时"):
+                                time_type = "h"
+                            elif p_text.endswith("天"):
+                                time_type = "d"
+                            else:
+                                time_type = "unknown"
+
+                            if "禁言" in p_text:
+                                s_index = p_text.index("禁言") + 2
+                            elif "口ta" in p_text:
+                                s_index = p_text.index("口ta") + 3
+                            else:
+                                return
+                            try:
+                                if time_type == "s":
+                                    mute_time = int(p_text[s_index:-1])
+                                elif time_type == "min":
+                                    mute_time = int(p_text[s_index:-2]) * 60
+                                elif time_type == "h":
+                                    mute_time = int(p_text[s_index:-2]) * 3600
+                                elif time_type == "d":
+                                    mute_time = int(p_text[s_index:-1]) * 86400
+                                else:
+                                    mute_time = -1
+                                await app.mute(group, at_target, mute_time)
+                            except ValueError:
+                                await app.sendGroupMessage(group, MessageChain.create([
+                                    Plain(f"错误：时间参数错误，仅支持秒/分钟/小时/天")
+                                ]))
+                            except PermissionError:
+                                await app.sendGroupMessage(group, MessageChain.create([
+                                    Plain(f"权限错误")
+                                ]))     # 大概不会raise
+
+            #   解禁某人
+            #   权限：管理员/群主/superman
+            #   是否At机器人：否
+            #   需At任意群员且机器人为管理员
+            if "解禁" in text:
+                if group.accountPerm == MemberPerm.Administrator or group.accountPerm == MemberPerm.Owner:
+                    await app.unmute(group, at_target)
             #   At了他人的操作结束
 
     #   普通操作开始
@@ -391,6 +453,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                         Plain(f"成功删除了 {arg[0]} 中的关键词：{arg[1]}")
                     ]))
             return
+
         #   管理员普通操作结束
 
     #   非管理员普通操作开始
@@ -494,7 +557,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                     Plain(f'用户{member.name}设置lp为：{true_lp_name}')
                 ]))
         return
-        
+
     #   加载关键词
     group_keywords = json.loads(r.hget('KEYWORDS', group_id))
 
@@ -555,8 +618,8 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                         ]))
             else:
                 await app.sendGroupMessage(group, MessageChain.create([
-                            Plain("错误：名称不存在（名称必须为关键词列表第一列中的名称）")
-                        ]))
+                    Plain("错误：名称不存在（名称必须为关键词列表第一列中的名称）")
+                ]))
         return
 
     #   查看自己换lp次数
@@ -655,5 +718,6 @@ async def group_welcome_join_handler(group: Group, member: Member):
             At(target=member.id),
             Plain(f'欢迎{member.name}加入{group.name}！')
         ]))
+
 
 app.launch_blocking()
