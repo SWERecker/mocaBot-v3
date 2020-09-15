@@ -464,7 +464,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     #   权限：成员
     #   是否At机器人：否
     p_text = text.replace("老婆", "lp").replace("我", "w")
-    if text.startswith("wlp是"):
+    if p_text.startswith("wlp是"):
         lp_name = p_text[4:].replace("？", "?")
         if "?" in lp_name:
             lp_name = fetch_lp(member.id)
@@ -488,6 +488,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                     Plain(f'用户{member.name}设置lp为：{true_lp_name}')
                 ]))
         return
+        
     #   加载关键词
     group_keywords = json.loads(r.hget('KEYWORDS', group_id))
 
