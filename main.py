@@ -6,6 +6,7 @@ from graia.application import GraiaMiraiApplication, Session
 from graia.application.group import Group, Member, MemberPerm
 from graia.application.message.elements.internal import Plain, Image, At
 from graia.broadcast import Broadcast
+from graia.application.entry import GroupMessage, MemberJoinEvent
 from function import *
 from logging import handlers
 import logging
@@ -39,7 +40,7 @@ app = GraiaMiraiApplication(
 
 
 # noinspection PyBroadException
-@bcc.receiver("GroupMessage")
+@bcc.receiver(GroupMessage)
 async def group_message_handler(app: GraiaMiraiApplication, message: MessageChain, group: Group, member: Member):
     global file_list_update_time
     text = message.asDisplay().replace(" ", "").lower()
@@ -639,5 +640,15 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             file_list_update_time = int(time.time())
             await update_file_list()
 
+
+@bcc.receiver(MemberJoinEvent)
+async def group_welcome_join_handler(group: Group, member: Member):
+    #   欢迎新成员加入
+    logger.info(f"[{group.id}] {member.id} 加入了 {group.id}")
+    if fetch_config(group.id, "welcomeNewMemberJoin") == 1:
+        await app.sendGroupMessage(group, MessageChain.create([
+            At(target=member.id),
+            Plain(f'欢迎{member.name}加入{group.name}！')
+        ]))
 
 app.launch_blocking()
