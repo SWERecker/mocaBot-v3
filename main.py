@@ -261,14 +261,15 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             #   需At任意群员且机器人为管理员
             plain_text = message.get(Plain)
             if len(plain_text) > 0:
-                p_text = plain_text[0].dict()['text']\
-                    .replace(" ", "")\
-                    .replace("他", "ta")\
-                    .replace("她", "ta")\
+                p_text = plain_text[0].dict()['text'] \
+                    .replace(" ", "") \
+                    .replace("他", "ta") \
+                    .replace("她", "ta") \
                     .replace("它", "ta")
                 if "禁言" in p_text or "口ta" in p_text:
                     if (group.accountPerm == MemberPerm.Administrator or group.accountPerm == MemberPerm.Owner) and \
-                            (member.permission == MemberPerm.Administrator or member.permission == MemberPerm.Owner):
+                            (member.permission == MemberPerm.Administrator or member.permission == MemberPerm.Owner
+                             or is_superman(member.id)):
                         #   需同时机器人是管理员且操作者为管理员
                         target: Member = await app.getMember(group_id, at_target)
                         if target.permission == MemberPerm.Member:
@@ -308,14 +309,17 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                             except PermissionError:
                                 await app.sendGroupMessage(group, MessageChain.create([
                                     Plain(f"权限错误")
-                                ]))     # 大概不会raise
+                                ]))  # 大概不会raise
 
             #   解禁某人
             #   权限：管理员/群主/superman
             #   是否At机器人：否
             #   需At任意群员且机器人为管理员
             if "解禁" in text:
-                if group.accountPerm == MemberPerm.Administrator or group.accountPerm == MemberPerm.Owner:
+                if (group.accountPerm == MemberPerm.Administrator or group.accountPerm == MemberPerm.Owner) and \
+                        (member.permission == MemberPerm.Administrator or
+                         member.permission == MemberPerm.Owner or
+                         is_superman(member.id)):
                     await app.unmute(group, at_target)
             #   At了他人的操作结束
 
