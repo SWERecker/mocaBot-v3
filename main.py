@@ -116,6 +116,22 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                     logger.debug(f"[{group_id}] 帮助类cd冷却中")
                 return
 
+            #   查看lp排行(置于lp关键词前，防止先触发lp关键词)
+            #   权限：成员
+            #   是否At机器人：是
+            if "lp排行" in text:
+                if not is_in_cd(group_id, "replyHelpCD"):
+                    logger.info(f"[{group_id}] 请求lp排行榜")
+                    await update_cd(group_id, "replyHelpCD")
+                    result = lp_list_rank()
+                    create_dict_pic(result, f'{group_id}_rank', '前十人数')
+                    await app.sendGroupMessage(group, MessageChain.create([
+                        Image.fromLocalFile(os.path.join(config.temp_path, f'{group_id}_rank.png'))
+                    ]))
+                else:
+                    logger.debug(f"[{group_id}] 帮助类cd冷却中")
+                return
+
             #   毛力爬
             #   权限：成员；
             #   是否At机器人：是

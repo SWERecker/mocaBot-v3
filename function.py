@@ -235,7 +235,7 @@ def fetch_picture_count_list(group_id: int) -> dict:
     return result_list
 
 
-async def lp_list_rank():
+def lp_list_rank():
     """
     统计设置为lp最多的10个.
 
