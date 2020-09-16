@@ -310,6 +310,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                                 await app.sendGroupMessage(group, MessageChain.create([
                                     Plain(f"权限错误")
                                 ]))  # 大概不会raise
+                    return
 
             #   解禁某人
             #   权限：管理员/群主/superman
@@ -321,6 +322,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                          member.permission == MemberPerm.Owner or
                          is_superman(member.id)):
                     await app.unmute(group, at_target)
+                return
             #   At了他人的操作结束
 
     #   普通操作开始
@@ -547,7 +549,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
             await app.sendGroupMessage(group, MessageChain.create([
                 Plain("az，这个群没有找到你lp呢~")
             ]))
-            return
+        return
 
     #   设置lp
     #   权限：成员
