@@ -51,7 +51,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
 
     #   初始化群组参数数据
     if not r.hexists("KEYWORDS", str(group_id)):
-        r.hset("KEYWORDS", str(group_id), r.hget("KEYWORDS", "keyword_template"))
+        r.hset("KEYWORDS", str(group_id), r.hget("KEYWORDS", "key_template"))
         r.hset("CONFIG", str(group_id), r.hget("CONFIG", "config_template"))
 
     if message.has(At):
