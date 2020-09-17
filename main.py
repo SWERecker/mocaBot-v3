@@ -557,7 +557,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
     p_text = text.replace("老婆", "lp").replace("我", "w")
     if p_text.startswith("wlp是"):
         lp_name = p_text[4:].replace("？", "?")
-        if "?" in lp_name:
+        if "?" or "谁" in lp_name:
             lp_name = fetch_lp(member.id)
             if lp_name == "NOT_DEFINED":
                 await app.sendGroupMessage(group, MessageChain.create([
