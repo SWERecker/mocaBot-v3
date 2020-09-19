@@ -708,14 +708,14 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                 return
 
     #   复读机
-    # data = repeater(group_id, message)
-    # if data[0]:
-    #     if data[1]:
-    #         await app.sendGroupMessage(group, MessageChain.create([
-    #             Image.fromLocalFile(os.path.join(config.resource_path, "fudu", "fudu.jpg"))
-    #         ]))
-    #     await app.sendGroupMessage(group, message.asSendable())
-    #     await update_cd(group_id, "repeatCD")
+    data = repeater(group_id, message)
+    if data[0]:
+        if data[1]:
+            await app.sendGroupMessage(group, MessageChain.create([
+                Image.fromLocalFile(os.path.join(config.resource_path, "fudu", "fudu.jpg"))
+            ]))
+        await app.sendGroupMessage(group, message.asSendable())
+        await update_cd(group_id, "repeatCD")
 
     #   非管理员普通操作结束
 

@@ -1,0 +1,29 @@
+    if member.permission == MemberPerm.Member:
+        if message.asDisplay().startswith("禁我"):
+            mute_time = 0
+            if message.asDisplay().endswith("秒"):
+                try:
+                    mute_time = int(message.asDisplay().lstrip("禁我").rstrip("秒"))
+                except ValueError:
+                    await app.sendGroupMessage(group, MessageChain.create([
+                        Plain("参数错误")
+                    ]))
+            elif message.asDisplay().endswith("分钟"):
+                try:
+                    mute_time = int(message.asDisplay().lstrip("禁我").rstrip("分钟")) * 60
+                except ValueError:
+                    await app.sendGroupMessage(group, MessageChain.create([
+                        Plain("参数错误")
+                    ]))
+            elif message.asDisplay().endswith("小时"):
+                try:
+                    mute_time = int(message.asDisplay().lstrip("禁我").rstrip("小时")) * 60 * 60
+                except ValueError:
+                    await app.sendGroupMessage(group, MessageChain.create([
+                        Plain("参数错误")
+                    ]))
+            else:
+                await app.sendGroupMessage(group, MessageChain.create([
+                    Plain("单位错误")
+                ]))
+            await app.mute(group, member, mute_time)
