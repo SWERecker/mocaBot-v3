@@ -3,6 +3,7 @@ import time
 import traceback
 
 from graia.application import GraiaMiraiApplication, Session
+from graia.application.event.mirai import MemberJoinRequestEvent, BotInvitedJoinGroupRequestEvent, BotJoinGroupEvent
 from graia.application.group import Group, Member, MemberPerm
 from graia.application.message.elements.internal import Plain, Image, At
 from graia.broadcast import Broadcast
@@ -614,14 +615,7 @@ async def group_message_handler(app: GraiaMiraiApplication, message: MessageChai
                         ]))
                         return
                     #   转换数字->文件名（补齐4位数字）
-                    if file_count < 10:
-                        file_name = "000{}".format(file_count)
-                    elif 10 <= file_count < 100:
-                        file_name = "00{}".format(file_count)
-                    elif 100 <= file_count < 1000:
-                        file_name = "0{}".format(file_count)
-                    else:
-                        file_name = "{}".format(file_count)
+                    file_name = f"{file_count}".zfill(4)
                     filename = "NOT_FOUND"
                     for file in file_list:
                         if file_name in file:
@@ -741,5 +735,25 @@ async def group_welcome_join_handler(group: Group, member: Member):
             Plain(f'欢迎{member.name}加入{group.name}！')
         ]))
 
+
+@bcc.receiver(BotInvitedJoinGroupRequestEvent)
+async def superman_invite_join_group(event: BotInvitedJoinGroupRequestEvent):
+    # EXPERIMENTAL 自动接收邀请
+    logger.info(f"{event.supplicant} invited me to group {event.groupId}, {event.groupName}")
+    if is_superman(event.supplicant):
+        logger.info("Superman invited me into a group, accept")
+        await event.accept("Auto accept")
+    else:
+        logger.info("Non-superman invited, reject")
+        await event.reject("Auto reject")
+
+
+@bcc.receiver(BotJoinGroupEvent)
+async def bot_join_group(event: BotJoinGroupEvent, group: Group):
+    # EXPERIMENTAL 自动发送使用说明
+    print(f"bot join {group.id}")
+    await app.sendGroupMessage(group, MessageChain.create([
+                Plain(f'大家好，我是mocaBot\n使用说明：http://mocabot.cn/')
+            ]))
 
 app.launch_blocking()
