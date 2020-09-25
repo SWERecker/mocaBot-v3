@@ -2,6 +2,7 @@ import difflib
 import logging
 import os
 import re
+import time
 
 import redis
 import random
@@ -23,6 +24,15 @@ cache_pool = redis.ConnectionPool(host='localhost', port=6379, db=1, decode_resp
 rc = redis.Redis(connection_pool=cache_pool)
 
 logger = logging.getLogger('botlogger')
+
+
+def get_timestamp() -> int:
+    """
+    获取秒级的时间戳
+
+    :return: 秒级时间戳
+    """
+    return int(time.time())
 
 
 def update_config(group_id: int, arg: str, value):
@@ -58,31 +68,41 @@ def fetch_config(group_id: int, arg: str):
     return value
 
 
-async def update_cd(group_id: int, cd_type: str, cd_time=0):
+def update_cd(runtime_var: dict, group_id: int, cd_type: str, cd_time=0):
     """
     更新某群组的某类cd.
 
+    :param runtime_var: 运行时变量dict
     :param group_id: QQ群号(int)
     :param cd_type: 参数名称(str)
     :param cd_time: cd时间（可选，如不指定则从数据库中查找）
     :return: None
     """
     if not cd_time == 0:
-        rc.set(f'in_{cd_type}_cd_{group_id}', '1', ex=cd_time)
+        # rc.set(f'in_{cd_type}_cd_{group_id}', '1', ex=cd_time)
+        runtime_var[f'in_{cd_type}_cd_{group_id}'] = get_timestamp() + cd_time
     else:
         group_cd = fetch_config(group_id, cd_type)
-        rc.set(f'in_{cd_type}_cd_{group_id}', '1', ex=group_cd)
+        # rc.set(f'in_{cd_type}_cd_{group_id}', '1', ex=group_cd)
+        runtime_var[f'in_{cd_type}_cd_{group_id}'] = get_timestamp() + group_cd
 
 
-def is_in_cd(group_id: int, cd_type: str) -> bool:
+def is_in_cd(runtime_var: dict, group_id: int, cd_type: str) -> bool:
     """
     判断是否在cd中.
-
+    :param runtime_var: 运行时变量dict
     :param group_id: QQ群号
     :param cd_type: 要查询的cd类型
     :return: True/False
     """
-    return rc.exists(f'in_{cd_type}_cd_{group_id}')
+    # return rc.exists(f'in_{cd_type}_cd_{group_id}')
+    if f'in_{cd_type}_cd_{group_id}' in runtime_var:
+        if get_timestamp() > runtime_var.get(f'in_{cd_type}_cd_{group_id}'):
+            return False
+        else:
+            return True
+    else:
+        return False
 
 
 async def update_lp(qq: int, lp_name: str):
@@ -369,10 +389,11 @@ def create_dict_pic(data: dict, group_id_with_type: str, title: str):
     del draw
 
 
-def repeater(group_id: int, message: MessageChain) -> (bool, bool):
+def repeater(runtime_var: dict, group_id: int, message: MessageChain) -> (bool, bool):
     """
-    复读机.(EXPERIMENTAL)
+    复读机.
 
+    :param runtime_var: 运行时字典
     :param group_id: QQ群号
     :param message: 消息的MessageChain
     :return (bool: 是否复读, bool: 是否附带复读图片)
@@ -399,7 +420,7 @@ def repeater(group_id: int, message: MessageChain) -> (bool, bool):
 
     if not rc.hget(group_id, "m_last_repeat") == excludeSourceMessage:
         if m_cache_0 == m_cache_1:
-            if not is_in_cd(group_id, "repeatCD"):
+            if not is_in_cd(runtime_var, group_id, "repeatCD"):
                 if random_do(fetch_config(group_id, "repeatChance")):
                     logger.debug(f"[{group_id}] 命中复读条件且不在cd中且命中概率，需要复读")
                     rc.hset(group_id, "m_last_repeat", excludeSourceMessage)

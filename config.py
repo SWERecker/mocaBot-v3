@@ -7,3 +7,5 @@ server_port = 5700
 pic_path = "D:\\pic\\"
 temp_path = "D:\\temp\\"
 resource_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "resource")
+
+random_url = 'https://api.mocabot.cn/api'
