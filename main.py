@@ -799,7 +799,7 @@ async def group_welcome_join_handler(group: Group, member: Member):
     if fetch_config(group.id, "welcomeNewMemberJoin") == 1:
         await app.sendGroupMessage(group, MessageChain.create([
             At(target=member.id),
-            Plain(f'欢迎{member.name}加入{group.name}！')
+            Plain(f' 欢迎加入{group.name}！')
         ]))
 
 
