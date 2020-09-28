@@ -3,7 +3,7 @@ import time
 import traceback
 
 from graia.application import GraiaMiraiApplication, Session
-from graia.application.event.mirai import MemberJoinRequestEvent, BotInvitedJoinGroupRequestEvent, BotJoinGroupEvent
+from graia.application.event.mirai import BotInvitedJoinGroupRequestEvent, BotJoinGroupEvent
 from graia.application.group import Group, Member, MemberPerm
 from graia.application.message.elements.internal import Plain, Image, At
 from graia.broadcast import Broadcast
@@ -68,19 +68,18 @@ app = GraiaMiraiApplication(
         authKey=config.auth_key,  # 填入 authKey
         account=config.bot_id,  # 你的机器人的 qq 号
         websocket=True  # Graia 已经可以根据所配置的消息接收的方式来保证消息接收部分的正常运作.
-    )
-
+    ),
+    enable_chat_log=False
 )
 
 
 # noinspection PyBroadException
 @bcc.receiver(GroupMessage)
-async def group_message_handler(app: GraiaMiraiApplication, message: MessageChain, group: Group, member: Member):
-    global file_list_update_time
+async def group_message_handler(message: MessageChain, group: Group, member: Member):
     text = message.asDisplay().replace(" ", "").lower()
     group_id = group.id
-    #   Temporary
 
+    #   Temporary
     if not rc.sismember("GROUPS", str(group_id)):
         rc.sadd('GROUPS', str(group_id))
 
@@ -818,7 +817,7 @@ async def superman_invite_join_group(event: BotInvitedJoinGroupRequestEvent):
 
 
 @bcc.receiver(BotJoinGroupEvent)
-async def bot_join_group(event: BotJoinGroupEvent, group: Group):
+async def bot_join_group(group: Group):
     # EXPERIMENTAL 自动发送使用说明
     print(f"bot join {group.id}")
     await app.sendGroupMessage(group, MessageChain.create([
