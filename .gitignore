@@ -133,3 +133,6 @@ log/
 .idea/
 cache/*
 temp/*
+resource/keai/*
+resource/pa/*
+

@@ -20,12 +20,12 @@ verify_url = f'http://{config.server_ip}:{config.server_port}/verify'
 groupMessage_url = f'http://{config.server_ip}:{config.server_port}/sendGroupMessage'
 release_session = f'http://{config.server_ip}:{config.server_port}/release'
 
-mirai_path = os.path.join("C:\\Users\\swe\\Documents\\mirai")
+mirai_path = "/root/mirai"
 
 
 def create_pic(data, group_id):
     """
-    将数据转换为图片文件创建对象, 写入{mirai_path}/temp/{group_id}_change.png.
+    将数据转换为图片文件创建对象, 写入{mirai_path}/data/MiraiApiHttp/images/{group_id}_change.png.
 
     :param data: 数据
     :param group_id: 群号
@@ -34,7 +34,7 @@ def create_pic(data, group_id):
     """
     font_file = os.path.join(abspath, "resource", "font", "PingFang.ttf")
     bg_file = os.path.join(abspath, "resource", "template", "bg.png")
-    new_img_file = os.path.join(mirai_path, "data", "MiraiAPIHTTP", "images", f"{group_id}_change.png")
+    new_img_file = os.path.join(mirai_path, "data", "MiraiApiHttp", "images", f"{group_id}_change.png")
     tab_info = data
     space = 50
     # PIL模块中，确定写入到图片中的文本字体
@@ -88,7 +88,7 @@ def compare_change(group_id, session_key):
 
     group_keyword = json.loads(r.hget("KEYWORDS", group_id))
 
-    storage_path = os.path.join(abspath, "temp", "cache")
+    storage_path = os.path.join(config.temp_path, "cache")
     if not os.path.exists(storage_path):
         os.makedirs(storage_path)
 
@@ -134,9 +134,7 @@ def compare_change(group_id, session_key):
 
 def mirai_auth():
     """
-    功能：mirai认证
-    参数：无
-    返回：
+    mirai认证.
     """
     auth_data = {'authKey': config.auth_key}
     verify_data = {'sessionKey': '', 'qq': config.bot_id}
@@ -155,14 +153,13 @@ def mirai_auth():
 
 def mirai_reply_image(target_id, session_key, path=''):
     """
-    功能：回复图片
-    参数：{
-        target_id    :  群号/QQ号，
-        session_key  :  sessionKey,
-        path         :  图片相对于 %MiraiPath%/plugins/MiraiAPIHTTP/images/
-        [图片id]     :  图片ID(可选)
+    回复图片.
+
+    :param: target_id: 群号
+    :param: session_key: sessionKey,
+    :param: path: 图片相对于 %MiraiPath%/plugins/MiraiAPIHTTP/images/
     }
-    返回：正常时返回post的返回值(json string)，参数错误时返回"error_invalid_parameter"
+    :return: 正常时返回msg(success)，参数错误时返回"error_invalid_parameter"
     """
     if not target_id == '' and not session_key == '':
         data_dict = {"sessionKey": session_key, "target": target_id, "messageChain": [{"type": "Image", "path": path}]}
@@ -179,6 +176,9 @@ def mirai_reply_image(target_id, session_key, path=''):
 
 
 def mirai_close_session(session_key):
+    """
+    关闭mirai session
+    """
     data = {'sessionKey': session_key, 'qq': config.bot_id}
     res = requests.post(url=release_session, data=json.dumps(data))
     r_json = json.loads(res.text)
