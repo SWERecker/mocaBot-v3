@@ -607,7 +607,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
             true_lp_name = match_lp(group_id, lp_name)
             if true_lp_name == "NOT_FOUND":
                 await app.sendGroupMessage(group, MessageChain.create([
-                    Plain('az，这个群没有找到nlp呢...')
+                    Plain('az，这个群没有找到nlp呢...\n可设置的lp是关键词列表中的任一人物哦\n发送“@モカ 关键词列表”来查看关键词列表')
                 ]))
             else:
                 await update_lp(member.id, true_lp_name)
