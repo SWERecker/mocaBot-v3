@@ -1,5 +1,4 @@
 import asyncio
-import time
 import traceback
 
 from graia.application import GraiaMiraiApplication, Session
@@ -657,59 +656,59 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
     #   加载关键词
     group_keywords = json.loads(r.hget('KEYWORDS', group_id))
 
-    #   选择图片
-    #   权限：成员
-    #   是否At机器人：否
-    if len(text) > 4 and text.startswith("选择图片"):
-        paras = text[4:].replace('，', ',').split(',')
-        if not len(paras) == 2:
-            await app.sendGroupMessage(group, MessageChain.create([
-                Plain('错误：参数数量错误。示例：选择图片 愛美，1')
-            ]))
-            return
-        else:
-            name = paras[0]
-            number = paras[1]
-            if name in group_keywords:
-                file_list = json.loads(rc.hget("FILES", name))
-                if not is_in_cd(runtime_var, group_id, "replyCD") or is_superman(member.id):  # 判断是否在回复图片的cd中
-                    try:
-                        file_count = int(number)
-                    except ValueError:
-                        num_file = len(file_list)
-                        await app.sendGroupMessage(group, MessageChain.create([
-                            Plain(f'图片序号格式错误，{name}共有{num_file}张图片，序号应为1~{num_file}')
-                        ]))
-                        return
-                    if file_count > len(file_list):
-                        num_file = len(file_list)
-                        await app.sendGroupMessage(group, MessageChain.create([
-                            Plain(f'图片序号超过文件数量，{name}共有{num_file}张图片，序号应为1~{num_file}')
-                        ]))
-                        return
-                    #   转换数字->文件名（补齐4位数字）
-                    file_name = f"{file_count}".zfill(4)
-                    filename = "NOT_FOUND"
-                    for file in file_list:
-                        if file_name in file:
-                            filename = file
-                            break
-                    if not filename == "NOT_FOUND":
-                        logger.info(f"[{group_id}] 请求：{name} => {filename}")
-                        await update_count(group_id, name)  # 更新统计次数
-                        update_cd(runtime_var, group_id, "replyCD")  # 更新cd
-                        await app.sendGroupMessage(group, MessageChain.create([
-                            Image.fromLocalFile(os.path.join(config.pic_path, name, filename))
-                        ]))
-                    else:
-                        await app.sendGroupMessage(group, MessageChain.create([
-                            Plain("错误：请求的文件不存在（可能是最新图片尚未缓存进入数据库）")
-                        ]))
-            else:
-                await app.sendGroupMessage(group, MessageChain.create([
-                    Plain("错误：名称不存在（名称必须为关键词列表第一列中的名称）")
-                ]))
-        return
+    # #   选择图片
+    # #   权限：成员
+    # #   是否At机器人：否
+    # if len(text) > 4 and text.startswith("选择图片"):
+    #     paras = text[4:].replace('，', ',').split(',')
+    #     if not len(paras) == 2:
+    #         await app.sendGroupMessage(group, MessageChain.create([
+    #             Plain('错误：参数数量错误。示例：选择图片 愛美，1')
+    #         ]))
+    #         return
+    #     else:
+    #         name = paras[0]
+    #         number = paras[1]
+    #         if name in group_keywords:
+    #             file_list = json.loads(rc.hget("FILES", name))
+    #             if not is_in_cd(runtime_var, group_id, "replyCD") or is_superman(member.id):  # 判断是否在回复图片的cd中
+    #                 try:
+    #                     file_count = int(number)
+    #                 except ValueError:
+    #                     num_file = len(file_list)
+    #                     await app.sendGroupMessage(group, MessageChain.create([
+    #                         Plain(f'图片序号格式错误，{name}共有{num_file}张图片，序号应为1~{num_file}')
+    #                     ]))
+    #                     return
+    #                 if file_count > len(file_list):
+    #                     num_file = len(file_list)
+    #                     await app.sendGroupMessage(group, MessageChain.create([
+    #                         Plain(f'图片序号超过文件数量，{name}共有{num_file}张图片，序号应为1~{num_file}')
+    #                     ]))
+    #                     return
+    #                 #   转换数字->文件名（补齐4位数字）
+    #                 file_name = f"{file_count}".zfill(4)
+    #                 filename = "NOT_FOUND"
+    #                 for file in file_list:
+    #                     if file_name in file:
+    #                         filename = file
+    #                         break
+    #                 if not filename == "NOT_FOUND":
+    #                     logger.info(f"[{group_id}] 请求：{name} => {filename}")
+    #                     await update_count(group_id, name)  # 更新统计次数
+    #                     update_cd(runtime_var, group_id, "replyCD")  # 更新cd
+    #                     await app.sendGroupMessage(group, MessageChain.create([
+    #                         Image.fromLocalFile(os.path.join(config.pic_path, name, filename))
+    #                     ]))
+    #                 else:
+    #                     await app.sendGroupMessage(group, MessageChain.create([
+    #                         Plain("错误：请求的文件不存在（可能是最新图片尚未缓存进入数据库）")
+    #                     ]))
+    #         else:
+    #             await app.sendGroupMessage(group, MessageChain.create([
+    #                 Plain("错误：名称不存在（名称必须为关键词列表第一列中的名称）")
+    #             ]))
+    #     return
 
     #   查看自己换lp次数
     #   权限：成员
