@@ -115,6 +115,7 @@ def compare_change(group_id, session_key):
             for name, result in result_json.items():
                 result_text += result
             # print(result_json)
+            result_text += "\n\nWiki：http://mocabot.cn/"
             filename = create_pic(result_text, group_id)
 
             print(f"Compared, Sending Image to {group_id}", mirai_reply_image(group_id, session_key, filename))
