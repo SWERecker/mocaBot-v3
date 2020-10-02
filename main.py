@@ -4,7 +4,7 @@ import traceback
 from graia.application import GraiaMiraiApplication, Session
 from graia.application.event.mirai import BotInvitedJoinGroupRequestEvent, BotJoinGroupEvent
 from graia.application.group import Group, Member, MemberPerm
-from graia.application.message.elements.internal import Plain, Image, At
+from graia.application.message.elements.internal import Plain, Image, At, ImageType
 from graia.broadcast import Broadcast
 from graia.application.entry import GroupMessage, MemberJoinEvent
 from function import *
@@ -111,7 +111,8 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                 if not is_in_cd(runtime_var, group_id, "replyHelpCD"):
                     logger.info(f"[{group_id}] 请求统计次数")
                     update_cd(runtime_var, group_id, "replyHelpCD")
-                    create_dict_pic(json.loads(r.hget("COUNT", group_id)), f'{group_id}_count', '次数')
+                    sorted_keyword_list = sort_dict(json.loads(r.hget("COUNT", group_id)))
+                    create_dict_pic(sorted_keyword_list, f'{group_id}_count', '次数')
                     await app.sendGroupMessage(group, MessageChain.create([
                         Image.fromLocalFile(os.path.join(config.temp_path, f'{group_id}_count.png'))
                     ]))
@@ -126,7 +127,8 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                 if not is_in_cd(runtime_var, group_id, "replyHelpCD"):
                     logger.info(f"[{group_id}] 请求关键词列表")
                     update_cd(runtime_var, group_id, "replyHelpCD")
-                    create_dict_pic(json.loads(r.hget("KEYWORDS", group_id)), f'{group_id}_key', '关键词')
+                    sorted_keyword_list = sort_dict(json.loads(r.hget("KEYWORDS", group_id)))
+                    create_dict_pic(sorted_keyword_list, f'{group_id}_key', '关键词')
                     await app.sendGroupMessage(group, MessageChain.create([
                         Image.fromLocalFile(os.path.join(config.temp_path, f'{group_id}_key.png'))
                     ]))
@@ -141,7 +143,8 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                 if not is_in_cd(runtime_var, group_id, "replyHelpCD"):
                     logger.info(f"[{group_id}] 请求统计图片数量")
                     update_cd(runtime_var, group_id, "replyHelpCD")
-                    create_dict_pic(fetch_picture_count_list(group_id), f'{group_id}_piccount', '图片数量')
+                    count_list = sort_dict(fetch_picture_count_list(group_id))
+                    create_dict_pic(count_list, f'{group_id}_piccount', '图片数量')
                     await app.sendGroupMessage(group, MessageChain.create([
                         Image.fromLocalFile(os.path.join(config.temp_path, f'{group_id}_piccount.png'))
                     ]))
@@ -805,7 +808,7 @@ async def group_welcome_join_handler(group: Group, member: Member):
 
 @bcc.receiver(BotInvitedJoinGroupRequestEvent)
 async def superman_invite_join_group(event: BotInvitedJoinGroupRequestEvent):
-    # EXPERIMENTAL 自动接收邀请
+    # 自动接收邀请
     logger.info(f"{event.supplicant} invited me to group {event.groupId}, {event.groupName}")
     if is_superman(event.supplicant):
         logger.info("Superman invited me into a group, accept")
@@ -817,7 +820,7 @@ async def superman_invite_join_group(event: BotInvitedJoinGroupRequestEvent):
 
 @bcc.receiver(BotJoinGroupEvent)
 async def bot_join_group(group: Group):
-    # EXPERIMENTAL 自动发送使用说明
+    # 自动发送使用说明
     print(f"bot join {group.id}")
     await app.sendGroupMessage(group, MessageChain.create([
         Plain(f'大家好，我是mocaBot\n使用说明：http://mocabot.cn/')

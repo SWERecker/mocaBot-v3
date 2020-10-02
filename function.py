@@ -10,13 +10,12 @@ import json
 
 import requests
 from graia.application import MessageChain
-from graia.application.message.elements.internal import ImageType
 
 import config
 from PIL import Image as ImageLib
 from PIL import ImageDraw, ImageFont
 from prettytable import PrettyTable
-
+from pypinyin import lazy_pinyin
 
 pool = redis.ConnectionPool(host='localhost', port=6379, db=0, decode_responses=True)
 r = redis.Redis(connection_pool=pool)
@@ -253,6 +252,7 @@ def fetch_picture_count_list(group_id: int) -> dict:
     for name in group_keyword:
         if name in file_list:
             result_list[name] = len(json.loads(file_list[name]))
+
     return result_list
 
 
@@ -464,3 +464,14 @@ def is_superman(member_id: int) -> bool:
         return True
     else:
         return False
+
+
+def sort_dict(origin_dict: dict) -> dict:
+    """
+    对dict进行排序
+
+    :param origin_dict: 原字典
+
+    :return: 排序后的字典
+    """
+    return dict(sorted(origin_dict.items(), key=lambda char: lazy_pinyin(char)[0][0]))
