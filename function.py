@@ -474,4 +474,8 @@ def sort_dict(origin_dict: dict) -> dict:
 
     :return: 排序后的字典
     """
-    return dict(sorted(origin_dict.items(), key=lambda char: lazy_pinyin(char)[0][0]))
+    result = {}
+    temp = sorted(origin_dict.keys(), key=lambda char: lazy_pinyin(char)[0][0])
+    for og in temp:
+        result[og] = origin_dict.get(og)
+    return result
