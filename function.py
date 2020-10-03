@@ -347,7 +347,7 @@ def create_dict_pic(data: dict, group_id_with_type: str, title: str):
     tab.align["名称"] = "l"
     # 表格内容插入
     tab.add_row(["", ""])
-    for item in sorted(data.items(), key=lambda d: d[1], reverse=True):
+    for item in data.items():
         tab.add_row([item[0], item[1]])
     tab_info = str(tab).replace("[", "").replace("]", "").replace(",", ", ").replace("'", " ")
     space = 50
