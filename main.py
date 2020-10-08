@@ -676,8 +676,13 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                 api_url = f'{config.trans_url}?appid={config.appid}&q={urllib.parse.quote(trans_content)}&from={from_lang}&to={to_lang}&salt={salt}&sign={sign}&action=1'
                 res = requests.get(api_url)
                 dict_res = json.loads(res.text)
+                if 'error_code' in dict_res:
+                    await app.sendGroupMessage(group, MessageChain.create([
+                        Plain(f'错误：{error_dict.get(dict_res.get("error_code"))}')
+                    ]))
+                    return
                 detect_from_lang = lang_dict.get(dict_res.get("from"))
-                if detect_from_lang is None:
+                if not detect_from_lang:
                     detect_from_lang = "未知"
                 result = f'百度翻译 源语言：{detect_from_lang}\n'
                 trans_data = dict_res.get('trans_result')
