@@ -664,7 +664,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
     #   百度翻译（EXPERIMENTAL）
     #   权限：成员
     #   是否At机器人：否
-    if text.startswith("翻译"):
+    if text.startswith("翻译") and not is_in_cd(runtime_var, group_id, "replyCD"):
         if len(text) > 2:
             try:
                 trans_content = text[2:]
@@ -679,10 +679,11 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                 result = f'百度翻译 源语言：{dict_res.get("from")}\n'
                 trans_data = dict_res.get('trans_result')
                 for data in trans_data:
-                    result += f"{data.get('src')}\n{data.get('dst')}"
+                    result += f"{data.get('dst')}\n"
                 await app.sendGroupMessage(group, MessageChain.create([
                     Plain(result)
                 ]))
+                await update_cd(runtime_var, group_id, "replyCD")
             except Exception as e:
                 await app.sendGroupMessage(group, MessageChain.create([
                     Plain(f'错误：{repr(e)}')
