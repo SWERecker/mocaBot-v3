@@ -718,12 +718,12 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
         if count > 0:
             await app.sendGroupMessage(group, MessageChain.create([
                 At(target=member.id),
-                Plain(f'你换了{count}次lp了哦~')
+                Plain(f' 你换了{count}次lp了哦~')
             ]))
         else:
             await app.sendGroupMessage(group, MessageChain.create([
                 At(target=member.id),
-                Plain('你还没有换过lp呢~')
+                Plain(' 你还没有换过lp呢~')
             ]))
         return
 
