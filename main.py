@@ -683,7 +683,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                 await app.sendGroupMessage(group, MessageChain.create([
                     Plain(result)
                 ]))
-                await update_cd(runtime_var, group_id, "replyCD")
+                update_cd(runtime_var, group_id, "replyCD")
             except Exception as e:
                 await app.sendGroupMessage(group, MessageChain.create([
                     Plain(f'错误：{repr(e)}')
