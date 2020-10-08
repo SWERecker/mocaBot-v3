@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import traceback
 
 from graia.application import GraiaMiraiApplication, Session
@@ -10,6 +11,7 @@ from graia.application.entry import GroupMessage, MemberJoinEvent
 from function import *
 from logging import handlers
 import logging
+import urllib
 
 #  日志部分
 loghandler = handlers.TimedRotatingFileHandler(os.path.join('log', 'mocaBot.log'), when='midnight', encoding='utf-8')
@@ -659,59 +661,36 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
     #   加载关键词
     group_keywords = json.loads(r.hget('KEYWORDS', group_id))
 
-    # #   选择图片
-    # #   权限：成员
-    # #   是否At机器人：否
-    # if len(text) > 4 and text.startswith("选择图片"):
-    #     paras = text[4:].replace('，', ',').split(',')
-    #     if not len(paras) == 2:
-    #         await app.sendGroupMessage(group, MessageChain.create([
-    #             Plain('错误：参数数量错误。示例：选择图片 愛美，1')
-    #         ]))
-    #         return
-    #     else:
-    #         name = paras[0]
-    #         number = paras[1]
-    #         if name in group_keywords:
-    #             file_list = json.loads(rc.hget("FILES", name))
-    #             if not is_in_cd(runtime_var, group_id, "replyCD") or is_superman(member.id):  # 判断是否在回复图片的cd中
-    #                 try:
-    #                     file_count = int(number)
-    #                 except ValueError:
-    #                     num_file = len(file_list)
-    #                     await app.sendGroupMessage(group, MessageChain.create([
-    #                         Plain(f'图片序号格式错误，{name}共有{num_file}张图片，序号应为1~{num_file}')
-    #                     ]))
-    #                     return
-    #                 if file_count > len(file_list):
-    #                     num_file = len(file_list)
-    #                     await app.sendGroupMessage(group, MessageChain.create([
-    #                         Plain(f'图片序号超过文件数量，{name}共有{num_file}张图片，序号应为1~{num_file}')
-    #                     ]))
-    #                     return
-    #                 #   转换数字->文件名（补齐4位数字）
-    #                 file_name = f"{file_count}".zfill(4)
-    #                 filename = "NOT_FOUND"
-    #                 for file in file_list:
-    #                     if file_name in file:
-    #                         filename = file
-    #                         break
-    #                 if not filename == "NOT_FOUND":
-    #                     logger.info(f"[{group_id}] 请求：{name} => {filename}")
-    #                     await update_count(group_id, name)  # 更新统计次数
-    #                     update_cd(runtime_var, group_id, "replyCD")  # 更新cd
-    #                     await app.sendGroupMessage(group, MessageChain.create([
-    #                         Image.fromLocalFile(os.path.join(config.pic_path, name, filename))
-    #                     ]))
-    #                 else:
-    #                     await app.sendGroupMessage(group, MessageChain.create([
-    #                         Plain("错误：请求的文件不存在（可能是最新图片尚未缓存进入数据库）")
-    #                     ]))
-    #         else:
-    #             await app.sendGroupMessage(group, MessageChain.create([
-    #                 Plain("错误：名称不存在（名称必须为关键词列表第一列中的名称）")
-    #             ]))
-    #     return
+    #   百度翻译（EXPERIMENTAL）
+    #   权限：成员
+    #   是否At机器人：否
+    if len(text) > 2 and text.startswith("翻译"):
+        try:
+            trans_content = text[2:]
+            from_lang = 'auto'
+            to_lang = 'zh'
+            salt = random.randint(32768, 65536)
+            sign = config.appid + trans_content + str(salt) + config.secret_key
+            sign = hashlib.md5(sign.encode()).hexdigest()
+            api_url = f'{config.trans_url}?appid={config.appid}&q={urllib.parse.quote(trans_content)}&from={from_lang}&to={to_lang}&salt={salt}&sign={sign}'
+            res = requests.get(api_url)
+            dict_res = json.loads(res.text)
+            result = f'百度翻译 源语言：{dict_res.get("from")}\n'
+            trans_data = dict_res.get('trans_result')
+            for data in trans_data:
+                result += f"{data.get('src')}\n{data.get('dst')}"
+            await app.sendGroupMessage(group, MessageChain.create([
+                Plain(result)
+            ]))
+        except Exception as e:
+            await app.sendGroupMessage(group, MessageChain.create([
+                Plain(f'错误：{repr(e)}')
+            ]))
+    else:
+        await app.sendGroupMessage(group, MessageChain.create([
+            Plain('错误：无翻译内容')
+        ]))
+        return
 
     #   查看自己换lp次数
     #   权限：成员
