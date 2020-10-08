@@ -12,7 +12,7 @@ from function import *
 from logging import handlers
 import logging
 import urllib
-
+from functions.signin import signin
 #  日志部分
 loghandler = handlers.TimedRotatingFileHandler(os.path.join('log', 'mocaBot.log'), when='midnight', encoding='utf-8')
 loghandler.setLevel(logging.INFO)
@@ -207,6 +207,14 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                     logger.debug(f"[{group_id}] moca可爱，但是cd冷却中")
                 await update_count(group_id, '可爱')
                 return
+
+            #   签到(EXPERIMENTAL)
+            #   权限：成员
+            #   是否At机器人：是
+            if "签到" in text:
+                if group_id == 277866700 or group_id == 1046522460 or group_id == 907274961:
+                    await signin(member.id, r, app, group)
+                    return
 
             #   提交图片
             #   权限：成员
