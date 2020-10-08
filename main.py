@@ -681,7 +681,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                 salt = random.randint(32768, 65536)
                 sign = config.appid + trans_content + str(salt) + config.secret_key
                 sign = hashlib.md5(sign.encode()).hexdigest()
-                api_url = f'{config.trans_url}?appid={config.appid}&q={urllib.parse.quote(trans_content)}&from={from_lang}&to={to_lang}&salt={salt}&sign={sign}&action=1'
+                api_url = f'{config.trans_url}?appid={config.appid}&q={urllib.parse.quote(trans_content)}&from={from_lang}&to={to_lang}&salt={salt}&sign={sign}'
                 res = requests.get(api_url)
                 dict_res = json.loads(res.text)
                 if 'error_code' in dict_res:
