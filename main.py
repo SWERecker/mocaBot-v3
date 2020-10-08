@@ -667,7 +667,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
     if text.startswith("翻译") and not is_in_cd(runtime_var, group_id, "replyCD"):
         if len(text) > 2:
             try:
-                trans_content = text[2:]
+                trans_content = message.asDisplay().lstrip("翻译")
                 from_lang = 'auto'
                 to_lang = 'zh'
                 salt = random.randint(32768, 65536)
