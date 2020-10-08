@@ -41,7 +41,7 @@ async def signin(qq: int, r: R, app: GraiaMiraiApplication, group: Group):
         if today_start_timestamp < last_signin_time < today_end_timestamp:
             await app.sendGroupMessage(group, MessageChain.create([
                 At(target=qq),
-                Plain(f"你已经在今天的{str_last_signin_time}已经签过到了哦~")
+                Plain(f" 你已经在今天的{str_last_signin_time}已经签过到了哦~")
             ]))
         else:
             exist_data['time'] = signin_time
