@@ -673,10 +673,13 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                 salt = random.randint(32768, 65536)
                 sign = config.appid + trans_content + str(salt) + config.secret_key
                 sign = hashlib.md5(sign.encode()).hexdigest()
-                api_url = f'{config.trans_url}?appid={config.appid}&q={urllib.parse.quote(trans_content)}&from={from_lang}&to={to_lang}&salt={salt}&sign={sign}'
+                api_url = f'{config.trans_url}?appid={config.appid}&q={urllib.parse.quote(trans_content)}&from={from_lang}&to={to_lang}&salt={salt}&sign={sign}&action=1'
                 res = requests.get(api_url)
                 dict_res = json.loads(res.text)
-                result = f'百度翻译 源语言：{lang_dict.get(dict_res.get("from"))}\n'
+                detect_from_lang = lang_dict.get(dict_res.get("from"))
+                if detect_from_lang is None:
+                    detect_from_lang = "未知"
+                result = f'百度翻译 源语言：{detect_from_lang}\n'
                 trans_data = dict_res.get('trans_result')
                 for data in trans_data:
                     result += f"{data.get('dst')}\n"
