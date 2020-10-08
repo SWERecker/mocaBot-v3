@@ -664,32 +664,33 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
     #   百度翻译（EXPERIMENTAL）
     #   权限：成员
     #   是否At机器人：否
-    if len(text) > 2 and text.startswith("翻译"):
-        try:
-            trans_content = text[2:]
-            from_lang = 'auto'
-            to_lang = 'zh'
-            salt = random.randint(32768, 65536)
-            sign = config.appid + trans_content + str(salt) + config.secret_key
-            sign = hashlib.md5(sign.encode()).hexdigest()
-            api_url = f'{config.trans_url}?appid={config.appid}&q={urllib.parse.quote(trans_content)}&from={from_lang}&to={to_lang}&salt={salt}&sign={sign}'
-            res = requests.get(api_url)
-            dict_res = json.loads(res.text)
-            result = f'百度翻译 源语言：{dict_res.get("from")}\n'
-            trans_data = dict_res.get('trans_result')
-            for data in trans_data:
-                result += f"{data.get('src')}\n{data.get('dst')}"
+    if text.startswith("翻译"):
+        if len(text) > 2:
+            try:
+                trans_content = text[2:]
+                from_lang = 'auto'
+                to_lang = 'zh'
+                salt = random.randint(32768, 65536)
+                sign = config.appid + trans_content + str(salt) + config.secret_key
+                sign = hashlib.md5(sign.encode()).hexdigest()
+                api_url = f'{config.trans_url}?appid={config.appid}&q={urllib.parse.quote(trans_content)}&from={from_lang}&to={to_lang}&salt={salt}&sign={sign}'
+                res = requests.get(api_url)
+                dict_res = json.loads(res.text)
+                result = f'百度翻译 源语言：{dict_res.get("from")}\n'
+                trans_data = dict_res.get('trans_result')
+                for data in trans_data:
+                    result += f"{data.get('src')}\n{data.get('dst')}"
+                await app.sendGroupMessage(group, MessageChain.create([
+                    Plain(result)
+                ]))
+            except Exception as e:
+                await app.sendGroupMessage(group, MessageChain.create([
+                    Plain(f'错误：{repr(e)}')
+                ]))
+        else:
             await app.sendGroupMessage(group, MessageChain.create([
-                Plain(result)
+                Plain('错误：无翻译内容')
             ]))
-        except Exception as e:
-            await app.sendGroupMessage(group, MessageChain.create([
-                Plain(f'错误：{repr(e)}')
-            ]))
-    else:
-        await app.sendGroupMessage(group, MessageChain.create([
-            Plain('错误：无翻译内容')
-        ]))
         return
 
     #   查看自己换lp次数
