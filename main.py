@@ -12,7 +12,7 @@ from function import *
 from logging import handlers
 import logging
 import urllib
-from functions.signin import signin, consume_pan
+from functions.signin import signin, consume_pan, buy_pan, buy_pan_interval, get_pan_amount
 
 #  日志部分
 loghandler = handlers.TimedRotatingFileHandler(os.path.join('log', 'mocaBot.log'), when='midnight', encoding='utf-8')
@@ -750,6 +750,48 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                 At(target=member.id),
                 Plain(' 你还没有换过lp呢~')
             ]))
+        return
+
+    #   买面包
+    #   权限：成员
+    #   是否At机器人：否
+    if text == '买面包':
+        status = buy_pan(member.id, r)
+        if status[0]:
+            buy_amount = status[2]
+            user_amount = status[3]
+            await app.sendGroupMessage(group, MessageChain.create([
+                At(target=member.id),
+                Plain(f' 成功购买了{buy_amount}个面包哦~\n你现在有{user_amount}个面包啦~')
+            ]))
+        else:
+            buy_interval = status[1] + buy_pan_interval - get_timestamp()
+            if buy_interval < 60:
+                str_next_buy_time = f"{buy_interval}秒"
+            else:
+                if buy_interval % 60 == 0:
+                    str_next_buy_time = f"{buy_interval / 60}分钟"
+                else:
+                    str_next_buy_time = f"{int(buy_interval / 60)}分钟{buy_interval % 60}秒"
+            await app.sendGroupMessage(group, MessageChain.create([
+                At(target=member.id),
+                Plain(f' 还不能购买呢~\n还要等{str_next_buy_time}才能再买哦~')
+            ]))
+        return
+
+    #   买面包
+    #   权限：成员
+    #   是否At机器人：否
+    if text == '我的面包':
+        pan_amount = get_pan_amount(member.id, r)
+        if pan_amount == 0:
+            re_text = " 你还没有面包呢~"
+        else:
+            re_text = f' 你现在有{pan_amount}个面包呢~'
+        await app.sendGroupMessage(group, MessageChain.create([
+            At(target=member.id),
+            Plain(re_text)
+        ]))
         return
 
     #   遍历查询是否在关键词列表中并发送图片
