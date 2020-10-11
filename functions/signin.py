@@ -27,7 +27,7 @@ async def signin(qq: int, r: R, app: GraiaMiraiApplication, group: Group):
     if exist_data == {}:
         # 初次签到
         signin_data = {"time": signin_time, "pan": 5, "sum_day": 1}
-        r.hset(db_name, qq, json.dumps(signin_data))
+        update_user_signin_data(qq, r, signin_data)
         await app.sendGroupMessage(group, MessageChain.create([
             At(target=qq),
             Plain(f"\n{str_time_now} \n初次签到成功！~\n摩卡给你5个面包哦~，你现在有5个面包啦~")
@@ -109,3 +109,28 @@ def get_today_end_time() -> int:
     """
     return int(time.mktime(time.strptime(str(datetime.date.today() + datetime.timedelta(days=1)), '%Y-%m-%d'))) - 1
 
+
+def consume_pan(qq: int, r: R, amount: int) -> [bool, int]:
+    """
+    消耗面包.
+
+    :param qq: 消耗面包的目标账户
+    :param r: Redis数据库对象
+    :param amount: 消耗的数量
+    :return: 成功返回[True, 剩余数量]；数量不足返回[False, 剩余数量]
+    """
+    return_data = [False, 0]
+    exist_data = get_user_signin_data(qq, r)
+    if exist_data == {}:
+        return return_data
+    else:
+        exist_pan = exist_data.get('pan')
+        if exist_pan < amount:
+            return_data[1] = exist_data['pan']
+            return return_data
+        else:
+            exist_data['pan'] -= amount
+            update_user_signin_data(qq, r, exist_data)
+            return_data[0] = True
+            return_data[1] = exist_data['pan']
+            return return_data
