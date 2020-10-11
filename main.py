@@ -60,6 +60,7 @@ dictionary = {
     }
 }
 twice_lp_pan_amount = 1
+debug_mode = False
 
 loop = asyncio.get_event_loop()
 
@@ -81,6 +82,10 @@ app = GraiaMiraiApplication(
 async def group_message_handler(message: MessageChain, group: Group, member: Member):
     text = message.asDisplay().replace(" ", "").lower()
     group_id = group.id
+
+    if debug_mode:
+        if not group_id == 907274961:
+            return
 
     #   Temporary
     if not rc.sismember("GROUPS", str(group_id)):
@@ -600,11 +605,11 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                             ]))
                         else:
                             if status[1] == 0:
-                                not_enough_text = "你没有面包了呢~"
+                                stat_text = "你没有面包了呢~"
                             else:
-                                not_enough_text = f"只剩{status[1]}个面包了呢~"
+                                stat_text = f"只剩{status[1]}个面包了呢~"
                             await app.sendGroupMessage(group, MessageChain.create([
-                                Plain(f"呜呜呜，面包不够了~你需要{twice_lp_pan_amount}个面包，但是{not_enough_text}")
+                                Plain(f"呜呜呜，面包不够了~你需要{twice_lp_pan_amount}个面包，但是{stat_text}")
                             ]))
                     else:
                         await app.sendGroupMessage(group, MessageChain.create([
@@ -767,11 +772,31 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
         for e in range(len(group_keywords[keys])):  # 遍历名称
             if group_keywords[keys][e] in text:  # 若命中名称
                 if not is_in_cd(runtime_var, group_id, "replyCD") or is_superman(member.id):  # 判断是否在回复图片的cd中
-                    pic_name = rand_pic(keys)
-                    logger.info(f"[{group_id}] 请求：{keys} , {pic_name}")
-                    await app.sendGroupMessage(group, MessageChain.create([
-                        Image.fromLocalFile(os.path.join(config.pic_path, keys, pic_name))
-                    ]))
+                    twice_lp = p_text.startswith("多")
+                    if twice_lp:
+                        status = consume_pan(member.id, r, twice_lp_pan_amount)
+                        if status[0]:
+                            pics = [rand_pic(keys), rand_pic(keys)]
+                            logger.info(f"[{group_id}] 请求：{keys} , {pics[0]}|{pics[1]}")
+                            await app.sendGroupMessage(group, MessageChain.create([
+                                Plain(f"你吃掉了{twice_lp_pan_amount}个面包，还剩{status[1]}个面包哦~"),
+                                Image.fromLocalFile(os.path.join(config.pic_path, keys, pics[0])),
+                                Image.fromLocalFile(os.path.join(config.pic_path, keys, pics[1]))
+                            ]))
+                        else:
+                            if status[1] == 0:
+                                stat_text = "你没有面包了呢~"
+                            else:
+                                stat_text = f"只剩{status[1]}个面包了呢~"
+                            await app.sendGroupMessage(group, MessageChain.create([
+                                Plain(f"呜呜呜，面包不够了~你需要{twice_lp_pan_amount}个面包，但是{stat_text}")
+                            ]))
+                    else:
+                        pic_name = rand_pic(keys)
+                        logger.info(f"[{group_id}] 请求：{keys} , {pic_name}")
+                        await app.sendGroupMessage(group, MessageChain.create([
+                            Image.fromLocalFile(os.path.join(config.pic_path, keys, pic_name))
+                        ]))
                     await update_count(group_id, keys)  # 更新统计次数
                     update_cd(runtime_var, group_id, "replyCD")  # 更新cd
                 return
