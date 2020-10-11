@@ -30,18 +30,19 @@ async def signin(qq: int, r: R, app: GraiaMiraiApplication, group: Group):
         r.hset(db_name, qq, json.dumps(signin_data))
         await app.sendGroupMessage(group, MessageChain.create([
             At(target=qq),
-            Plain(f"\n{str_time_now} \n初次签到成功！~\n摩卡给你5个面包哦~")
+            Plain(f"\n{str_time_now} \n初次签到成功！~\n摩卡给你5个面包哦~，你现在有5个面包啦~")
         ]))
     else:
         # 已存在数据
         last_signin_time = exist_data.get('time')
+        exist_pan = exist_data.get('pan')
         today_start_timestamp = get_today_start_time()
         today_end_timestamp = get_today_end_time()
         str_last_signin_time = time.strftime("%H:%M:%S", time.localtime(last_signin_time))
         if today_start_timestamp < last_signin_time < today_end_timestamp:
             await app.sendGroupMessage(group, MessageChain.create([
                 At(target=qq),
-                Plain(f" 你已经在今天的{str_last_signin_time}已经签过到了哦~")
+                Plain(f" 你已经在今天的{str_last_signin_time}已经签过到了哦~\n你现在有{exist_pan}个面包哦~")
             ]))
         else:
             exist_data['time'] = signin_time
