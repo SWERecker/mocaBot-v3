@@ -12,7 +12,8 @@ from function import *
 from logging import handlers
 import logging
 import urllib
-from functions.signin import signin, consume_pan, buy_pan, buy_pan_interval, get_pan_amount
+from functions.signin import signin, consume_pan, buy_pan, buy_pan_interval, get_pan_amount, PAN_TWICE_LP_CONSUME, \
+    eat_pan, EAT_PAN_AMOUNT
 
 #  日志部分
 loghandler = handlers.TimedRotatingFileHandler(os.path.join('log', 'mocaBot.log'), when='midnight', encoding='utf-8')
@@ -59,8 +60,10 @@ dictionary = {
         "co": "翻唱"
     }
 }
-twice_lp_pan_amount = 1
+twice_lp_pan_amount = 2
+
 debug_mode = False
+
 
 loop = asyncio.get_event_loop()
 
@@ -121,7 +124,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                     logger.info(f"[{group_id}] 请求统计次数")
                     update_cd(runtime_var, group_id, "replyHelpCD")
                     sorted_keyword_list = sort_dict(json.loads(r.hget("COUNT", group_id)))
-                    create_dict_pic(sorted_keyword_list, f'{group_id}_count', '次数')
+                    create_dict_pic(sorted_keyword_list, f'{group_id}_count', '次数', sort_by_value=True)
                     await app.sendGroupMessage(group, MessageChain.create([
                         Image.fromLocalFile(os.path.join(config.temp_path, f'{group_id}_count.png'))
                     ]))
@@ -153,7 +156,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                     logger.info(f"[{group_id}] 请求统计图片数量")
                     update_cd(runtime_var, group_id, "replyHelpCD")
                     count_list = sort_dict(fetch_picture_count_list(group_id))
-                    create_dict_pic(count_list, f'{group_id}_piccount', '图片数量')
+                    create_dict_pic(count_list, f'{group_id}_piccount', '图片数量', sort_by_value=True)
                     await app.sendGroupMessage(group, MessageChain.create([
                         Image.fromLocalFile(os.path.join(config.temp_path, f'{group_id}_piccount.png'))
                     ]))
@@ -595,7 +598,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                 if not is_in_cd(runtime_var, group_id, "replyCD"):
                     file = rand_pic(lp_name)
                     if twice_lp:
-                        status = consume_pan(member.id, r, twice_lp_pan_amount)
+                        status = consume_pan(member.id, r, twice_lp_pan_amount, PAN_TWICE_LP_CONSUME)
                         if status[0]:
                             files = [rand_pic(lp_name), rand_pic(lp_name)]
                             await app.sendGroupMessage(group, MessageChain.create([
@@ -691,9 +694,6 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
         ]))
         return
 
-    #   加载关键词
-    group_keywords = json.loads(r.hget('KEYWORDS', group_id))
-
     #   百度翻译（EXPERIMENTAL）
     #   权限：成员
     #   是否At机器人：否
@@ -735,6 +735,9 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
             ]))
         return
 
+    #   加载关键词
+    group_keywords = json.loads(r.hget('KEYWORDS', group_id))
+
     #   查看自己换lp次数
     #   权限：成员
     #   是否At机器人：否
@@ -755,7 +758,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
     #   买面包
     #   权限：成员
     #   是否At机器人：否
-    if text == '买面包':
+    if text == '买面包' or text == '来点面包':
         status = buy_pan(member.id, r)
         if status[0]:
             buy_amount = status[2]
@@ -779,10 +782,10 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
             ]))
         return
 
-    #   买面包
+    #   查看面包
     #   权限：成员
     #   是否At机器人：否
-    if text == '我的面包':
+    if text == '我的面包' or text == '面包数量':
         pan_amount = get_pan_amount(member.id, r)
         if pan_amount == 0:
             re_text = " 你还没有面包呢~"
@@ -792,6 +795,23 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
             At(target=member.id),
             Plain(re_text)
         ]))
+        return
+
+    #   吃面包
+    #   权限：成员
+    #   是否At机器人：否
+    if text == '吃面包' or text == '恰面包':
+        status = eat_pan(member.id, r)
+        if status[0]:
+            await app.sendGroupMessage(group, MessageChain.create([
+                At(target=member.id),
+                Plain(f" 你吃掉了{EAT_PAN_AMOUNT}个面包，还剩{status[1]}个面包哦~")
+            ]))
+        else:
+            await app.sendGroupMessage(group, MessageChain.create([
+                At(target=member.id),
+                Plain(f"呜呜呜，你似乎没有面包了呢~")
+            ]))
         return
 
     #   遍历查询是否在关键词列表中并发送图片
@@ -816,7 +836,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                 if not is_in_cd(runtime_var, group_id, "replyCD") or is_superman(member.id):  # 判断是否在回复图片的cd中
                     twice_lp = p_text.startswith("多")
                     if twice_lp:
-                        status = consume_pan(member.id, r, twice_lp_pan_amount)
+                        status = consume_pan(member.id, r, twice_lp_pan_amount, PAN_TWICE_LP_CONSUME)
                         if status[0]:
                             pics = [rand_pic(keys), rand_pic(keys)]
                             logger.info(f"[{group_id}] 请求：{keys} , {pics[0]}|{pics[1]}")

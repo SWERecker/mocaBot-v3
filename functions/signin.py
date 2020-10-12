@@ -1,4 +1,5 @@
 import datetime
+import os
 import random
 
 import redis
@@ -11,6 +12,27 @@ from graia.application.group import Group
 db_name = "SIGNIN"
 R = redis.Redis
 buy_pan_interval = 3600
+SIGNIN_PAN = 5
+
+BUY_PAN_MIN = 1
+BUY_PAN_MAX = 10
+
+EAT_PAN_AMOUNT = 1
+
+# PAN_MACRO_DEFINITION
+PAN_TYPE_CONSUME = [1, 3]  # Types that consume pan
+PAN_SIGNIN_ADD = 0
+PAN_TWICE_LP_CONSUME = 1
+PAN_BUY = 2
+PAN_EAT = 3
+
+PAN_USAGE_STR = [
+    "签到，收入",
+    "2xlp，消耗",
+    "购买面包，收入",
+    "食用面包，消耗"
+]
+pan_log_file = os.path.join('log', 'pan_bill.txt')
 
 
 async def signin(qq: int, r: R, app: GraiaMiraiApplication, group: Group):
@@ -31,12 +53,13 @@ async def signin(qq: int, r: R, app: GraiaMiraiApplication, group: Group):
         exist_pan = exist_data.get('pan')
     if exist_data == {}:
         # 初次签到
-        new_pan = exist_pan + 5
+        new_pan = exist_pan + SIGNIN_PAN
         signin_data = {"time": signin_time, "pan": new_pan, "sum_day": 1}
         update_user_signin_data(qq, r, signin_data)
+
         await app.sendGroupMessage(group, MessageChain.create([
             At(target=qq),
-            Plain(f"\n{str_time_now} \n初次签到成功！~\n摩卡给你5个面包哦~\n你现在有{new_pan}个面包啦~")
+            Plain(f"\n{str_time_now} \n初次签到成功！~\n摩卡给你{SIGNIN_PAN}个面包哦~\n你现在有{new_pan}个面包啦~")
         ]))
     else:
         # 已存在数据
@@ -52,12 +75,13 @@ async def signin(qq: int, r: R, app: GraiaMiraiApplication, group: Group):
             ]))
         else:
             exist_data['time'] = signin_time
-            exist_data['pan'] += 5
+            exist_data['pan'] += SIGNIN_PAN
             exist_data['sum_day'] += 1
             update_user_signin_data(qq, r, exist_data)
+            pan_usage_log(qq, SIGNIN_PAN, exist_data['pan'], PAN_SIGNIN_ADD)
             await app.sendGroupMessage(group, MessageChain.create([
                 At(target=qq),
-                Plain(f"\n{str_time_now} 签到成功，摩卡给你5个面包哦~\n累计签到{exist_data['sum_day']}天\n你现在有{exist_data['pan']}个面包啦~")
+                Plain(f"\n{str_time_now} 签到成功，摩卡给你{SIGNIN_PAN}个面包哦~\n累计签到{exist_data['sum_day']}天\n你现在有{exist_data['pan']}个面包啦~")
             ]))
 
 
@@ -116,13 +140,14 @@ def get_today_end_time() -> int:
     return int(time.mktime(time.strptime(str(datetime.date.today() + datetime.timedelta(days=1)), '%Y-%m-%d'))) - 1
 
 
-def consume_pan(qq: int, r: R, amount: int) -> [bool, int]:
+def consume_pan(qq: int, r: R, amount: int, use_type: int) -> [bool, int]:
     """
     消耗面包.
 
     :param qq: 消耗面包的目标账户
     :param r: Redis数据库对象
     :param amount: 消耗的数量
+    :param use_type: 消耗类型
     :return: 成功返回[True, 剩余数量]；数量不足返回[False, 剩余数量]
     """
     return_data = [False, 0]
@@ -137,6 +162,7 @@ def consume_pan(qq: int, r: R, amount: int) -> [bool, int]:
         else:
             exist_data['pan'] -= amount
             update_user_signin_data(qq, r, exist_data)
+            pan_usage_log(qq, amount, exist_data['pan'], use_type)
             return_data[0] = True
             return_data[1] = exist_data['pan']
             return return_data
@@ -171,11 +197,12 @@ def buy_pan(qq: int, r: R) -> [bool, int, int, int]:
         if time_now - last_buy_time < buy_pan_interval:
             return [False, last_buy_time, 0, 0]
 
-    amount = random.randint(1, 10)
+    amount = random.randint(BUY_PAN_MIN, BUY_PAN_MAX)
     buy_time = get_time_now()
     exist_data['pan'] += amount
     exist_data['last_buy_time'] = buy_time
     update_user_signin_data(qq, r, exist_data)
+    pan_usage_log(qq, amount, exist_data['pan'], PAN_BUY)
     return [True, buy_time, amount, exist_data.get('pan')]
 
 
@@ -192,3 +219,42 @@ def get_pan_amount(qq: int, r: R) -> int:
         return 0
     return exist_data.get('pan')
 
+
+def eat_pan(qq: int, r: R) -> [bool, int]:
+    """
+    恰面包.
+
+    :param qq: 吃面包的qq号
+    :param r: Redis数据库对象
+    :return: [成功/失败, 面包剩余数量]
+    """
+    exist_data = get_user_signin_data(qq, r)
+    if not bool(exist_data):
+        return [False, 0]
+    if exist_data.get('pan') == 0:
+        return [False, 0]
+    exist_data['pan'] -= EAT_PAN_AMOUNT
+    update_user_signin_data(qq, r, exist_data)
+    pan_usage_log(qq, EAT_PAN_AMOUNT, exist_data['pan'], PAN_EAT)
+    return [True, exist_data['pan']]
+
+
+def pan_usage_log(qq: int, amount: int, account_amount: int, use_type: int):
+    """
+    面包记录.
+
+    :param qq: 用户QQ
+    :param amount: 消耗的面包数量
+    :param use_type: 使用类型
+    :param account_amount: 账户余额
+    :return: None
+    """
+    log_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(get_time_now()))
+    if use_type in PAN_TYPE_CONSUME:
+        delta_str = f"-{amount}"
+    else:
+        delta_str = f"+{amount}"
+    to_write_data = f"[{log_time}] [{qq}] 用户通过 {PAN_USAGE_STR[use_type]} 面包{delta_str} 账户剩余{account_amount}个面包"
+    with open(pan_log_file, 'a', encoding='utf-8')as log_file:
+        log_file.write(to_write_data)
+        log_file.write('\n')

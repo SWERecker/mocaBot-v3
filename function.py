@@ -367,13 +367,14 @@ def match_lp(group_id: int, lp_name: str) -> str:
         return "NOT_FOUND"
 
 
-def create_dict_pic(data: dict, group_id_with_type: str, title: str):
+def create_dict_pic(data: dict, group_id_with_type: str, title: str, sort_by_value=False):
     """
     将json转换为图片文件.
 
     :param data: Dict
     :param group_id_with_type: 群号_文件类型
     :param title: 表格第二列的标题
+    :param sort_by_value: 是否按照值从大到小排序
     :return: None, 写入{temp_path}/{名称}.png
     """
     tab = PrettyTable(border=False, header=True, header_style='title')
@@ -385,8 +386,12 @@ def create_dict_pic(data: dict, group_id_with_type: str, title: str):
     tab.align["名称"] = "l"
     # 表格内容插入
     tab.add_row(["", ""])
-    for item in data.items():
-        tab.add_row([item[0], item[1]])
+    if sort_by_value:
+        for item in sorted(data.items(), key=lambda d: d[1], reverse=True):
+            tab.add_row([item[0], item[1]])
+    else:
+        for item in data.items():
+            tab.add_row([item[0], item[1]])
     tab_info = str(tab).replace("[", "").replace("]", "").replace(",", ", ").replace("'", " ")
     space = 50
     # PIL模块中，确定写入到图片中的文本字体
