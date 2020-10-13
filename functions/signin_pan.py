@@ -21,7 +21,8 @@ BUY_PAN_MAX = 10
 
 EAT_PAN_AMOUNT = 1
 
-ROB_PAN_SUCCESS_RATE = 25
+ROB_PAN_SUCCESS_RATE = 35
+ROB_PAN_BONUS = 20
 ROB_PAN_MIN = 1
 ROB_PAN_MAX = 20
 ROB_CD = 120
@@ -290,7 +291,7 @@ def rob_pan(robber: int, robbeder: int, r: R) -> [bool, int, int, int]:
     :param robbeder: 被抢的对象的qq号
     :return: [成功/失败, 面包变化情况, robber.pan, robbeder.pan]
     """
-    global ROB_PAN_SUCCESS_RATE
+    global ROB_PAN_SUCCESS_RATE, ROB_PAN_MIN, ROB_PAN_MAX
     robber_data = get_user_signin_data(robber, r)
     robbeder_data = get_user_signin_data(robbeder, r)
     if not bool(robbeder_data):
@@ -310,9 +311,12 @@ def rob_pan(robber: int, robbeder: int, r: R) -> [bool, int, int, int]:
         return [False, rob_amount, robber_data['pan'], robbeder_data['pan']]
 
     if robber_data['pan'] == 0:
-        ROB_PAN_SUCCESS_RATE = 5
+        ROB_PAN_SUCCESS_RATE = 10
+        ROB_PAN_MAX = 50
     if random_do(ROB_PAN_SUCCESS_RATE):
         init_user_data(robber, r)
+        if random_do(ROB_PAN_BONUS):
+            ROB_PAN_MAX = 40
         rob_amount = random.randint(ROB_PAN_MIN, ROB_PAN_MAX)
         if robbeder_data['pan'] < rob_amount:
             rob_amount = robbeder_data['pan']
@@ -322,6 +326,7 @@ def rob_pan(robber: int, robbeder: int, r: R) -> [bool, int, int, int]:
         update_user_signin_data(robbeder, r, robbeder_data)
         pan_usage_log(robber, rob_amount, robber_data['pan'], PAN_ROB_SUCCESS)
         pan_usage_log(robbeder, rob_amount, robbeder_data['pan'], PAN_ROBBED)
+        reset_value()
         return [True, rob_amount, robber_data['pan'], robbeder_data['pan']]
     else:
         rob_amount = random.randint(ROB_PAN_MIN, ROB_PAN_MAX)
@@ -330,4 +335,12 @@ def rob_pan(robber: int, robbeder: int, r: R) -> [bool, int, int, int]:
         robber_data['pan'] -= rob_amount
         update_user_signin_data(robber, r, robber_data)
         pan_usage_log(robber, rob_amount, robber_data['pan'], PAN_ROB_FAIL)
+        reset_value()
         return [False, rob_amount, robber_data['pan'], robbeder_data['pan']]
+
+
+def reset_value():
+    global ROB_PAN_SUCCESS_RATE, ROB_PAN_MIN, ROB_PAN_MAX
+    ROB_PAN_SUCCESS_RATE = 30
+    ROB_PAN_MIN = 1
+    ROB_PAN_MAX = 20
