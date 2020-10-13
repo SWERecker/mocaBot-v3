@@ -300,6 +300,12 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
             #   是否At机器人：否
             #   需At任意群员
             if '抢面包' in text:
+                if member.id == at_target:
+                    await app.sendGroupMessage(group, MessageChain.create([
+                        At(target=member.id),
+                        Plain(f" 不能抢自己的面包哦！~")
+                    ]))
+                    return
                 if is_in_user_cd(runtime_var, member.id, "rob"):
                     return
 
