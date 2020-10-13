@@ -12,8 +12,8 @@ from function import *
 from logging import handlers
 import logging
 import urllib
-from functions.signin import signin, consume_pan, buy_pan, buy_pan_interval, get_pan_amount, PAN_TWICE_LP_CONSUME, \
-    eat_pan, EAT_PAN_AMOUNT
+from functions.signin_pan import signin, consume_pan, buy_pan, BUY_PAN_INTERVAL, get_pan_amount, PAN_TWICE_LP_CONSUME, \
+    eat_pan, EAT_PAN_AMOUNT, rob_pan, ROB_CD
 
 #  日志部分
 loghandler = handlers.TimedRotatingFileHandler(os.path.join('log', 'mocaBot.log'), when='midnight', encoding='utf-8')
@@ -293,11 +293,47 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
         else:
             #   At了他人的操作开始
 
+            logger.debug(f"[{group_id}] @{at_target_name} {at_target}")
+
+            #   抢面包
+            #   权限：成员
+            #   是否At机器人：否
+            #   需At任意群员
+            if '抢面包' in text:
+                if is_in_user_cd(runtime_var, member.id, "rob"):
+                    return
+
+                status = rob_pan(member.id, at_target, r)
+                if status[0]:
+                    await app.sendGroupMessage(group, MessageChain.create([
+                        At(target=member.id),
+                        Plain(f" 抢面包成功了！你获得了{status[1]}个面包~\n你现在有{status[2]}个面包，ta现在有{status[3]}个面包呢~")
+                    ]))
+                    return
+                else:
+                    if status[1] == -99:
+                        await app.sendGroupMessage(group, MessageChain.create([
+                            At(target=member.id),
+                            Plain(f" 抢面包失败了...ta没有面包了QAQ")
+                        ]))
+                        return
+                    if status[1] == 0:
+                        await app.sendGroupMessage(group, MessageChain.create([
+                            At(target=member.id),
+                            Plain(f" 抢面包失败了...但你也没有面包了呢www")
+                        ]))
+                        return
+                    await app.sendGroupMessage(group, MessageChain.create([
+                        At(target=member.id),
+                        Plain(f" 抢面包失败了...你失去了{status[1]}个面包...\n你现在还有{status[2]}个面包，ta现在有{status[3]}个面包...")
+                    ]))
+                update_user_cd(runtime_var, member.id, "rob", ROB_CD)
+                return
+
             #   查看他人换lp次数
             #   权限：成员
             #   是否At机器人：否
             #   需At任意群员
-            logger.debug(f"[{group_id}] At {at_target_name} {at_target}")
             if '换lp次数' in text.replace('老婆', 'lp'):
                 count = fetch_clp_times(at_target)
                 if count > 0:
@@ -768,7 +804,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                 Plain(f' 成功购买了{buy_amount}个面包哦~\n你现在有{user_amount}个面包啦~')
             ]))
         else:
-            buy_interval = status[1] + buy_pan_interval - get_timestamp()
+            buy_interval = status[1] + BUY_PAN_INTERVAL - get_timestamp()
             if buy_interval < 60:
                 str_next_buy_time = f"{buy_interval}秒"
             else:

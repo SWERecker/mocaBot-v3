@@ -124,9 +124,29 @@ def update_cd(runtime_var: dict, group_id: int, cd_type: str, cd_time=0):
         runtime_var[f'in_{cd_type}_cd_{group_id}'] = get_timestamp() + group_cd
 
 
+def update_user_cd(runtime_var: dict, user_id: int, cd_type: str, cd_time=0):
+    """
+    更新某用户的某类cd.
+
+    :param runtime_var: 运行时变量dict
+    :param user_id: QQ号(int)
+    :param cd_type: 参数名称(str)
+    :param cd_time: cd时间（可选，如不指定则从数据库中查找）
+    :return: None
+    """
+    if not cd_time == 0:
+        # rc.set(f'in_{cd_type}_cd_{group_id}', '1', ex=cd_time)
+        runtime_var[f'in_{cd_type}_cd_{user_id}'] = get_timestamp() + cd_time
+    else:
+        group_cd = fetch_config(user_id, cd_type)
+        # rc.set(f'in_{cd_type}_cd_{group_id}', '1', ex=group_cd)
+        runtime_var[f'in_{cd_type}_cd_{user_id}'] = get_timestamp() + group_cd
+
+
 def is_in_cd(runtime_var: dict, group_id: int, cd_type: str) -> bool:
     """
     判断是否在cd中.
+
     :param runtime_var: 运行时变量dict
     :param group_id: QQ群号
     :param cd_type: 要查询的cd类型
@@ -135,6 +155,25 @@ def is_in_cd(runtime_var: dict, group_id: int, cd_type: str) -> bool:
     # return rc.exists(f'in_{cd_type}_cd_{group_id}')
     if f'in_{cd_type}_cd_{group_id}' in runtime_var:
         if get_timestamp() > runtime_var.get(f'in_{cd_type}_cd_{group_id}'):
+            return False
+        else:
+            return True
+    else:
+        return False
+
+
+def is_in_user_cd(runtime_var: dict, user_id: int, cd_type: str) -> bool:
+    """
+    判断是否在cd中.
+
+    :param runtime_var: 运行时变量dict
+    :param user_id: QQ号
+    :param cd_type: 要查询的cd类型
+    :return: True/False
+    """
+    # return rc.exists(f'in_{cd_type}_cd_{group_id}')
+    if f'in_{cd_type}_cd_{user_id}' in runtime_var:
+        if get_timestamp() > runtime_var.get(f'in_{cd_type}_cd_{user_id}'):
             return False
         else:
             return True
