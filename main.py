@@ -331,7 +331,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                         return
                     await app.sendGroupMessage(group, MessageChain.create([
                         At(target=member.id),
-                        Plain(f" 抢面包失败了...你失去了{status[1]}个面包...\n你现在还有{status[2]}个面包，ta现在有{status[3]}个面包...")
+                        Plain(f" 抢面包失败了...你失去了{status[1]}个面包...\n你现在还有{status[2]}个面包，ta现在有{status[3]}个面包www")
                     ]))
                 update_user_cd(runtime_var, member.id, "rob", ROB_CD)
                 return

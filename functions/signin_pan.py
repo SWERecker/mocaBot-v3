@@ -25,7 +25,7 @@ ROB_PAN_SUCCESS_RATE = 35
 ROB_PAN_BONUS = 20
 ROB_PAN_MIN = 1
 ROB_PAN_MAX = 20
-ROB_CD = 120
+ROB_CD = 300
 
 # PAN_MACRO_DEFINITION
 PAN_TYPE_CONSUME = [1, 3, 5, 6]  # Types that consume pan
@@ -36,6 +36,7 @@ PAN_EAT = 3
 PAN_ROB_SUCCESS = 4
 PAN_ROB_FAIL = 5
 PAN_ROBBED = 6
+PAN_ROB_FAIL_GET = 7
 
 PAN_USAGE_STR = [
     "签到，收入",
@@ -44,7 +45,8 @@ PAN_USAGE_STR = [
     "食用面包，消耗",
     "抢到面包，收入",
     "抢面包失败，失去",
-    "被抢面包，失去"
+    "被抢面包，失去",
+    "对方抢面包失败，自己获得"
 ]
 pan_log_file = os.path.join('log', 'pan_bill.txt')
 
@@ -306,8 +308,11 @@ def rob_pan(robber: int, robbeder: int, r: R) -> [bool, int, int, int]:
         if rob_amount > robber_data['pan']:
             rob_amount = robber_data['pan']
         robber_data['pan'] -= rob_amount
+        robbeder_data['pan'] += rob_amount
         update_user_signin_data(robber, r, robber_data)
+        update_user_signin_data(robbeder, r, robbeder_data)
         pan_usage_log(robber, rob_amount, robber_data['pan'], PAN_ROB_FAIL)
+        pan_usage_log(robbeder, rob_amount, robbeder_data['pan'], PAN_ROB_FAIL_GET)
         return [False, rob_amount, robber_data['pan'], robbeder_data['pan']]
 
     if robber_data['pan'] == 0:
@@ -333,8 +338,11 @@ def rob_pan(robber: int, robbeder: int, r: R) -> [bool, int, int, int]:
         if rob_amount > robber_data['pan']:
             rob_amount = robber_data['pan']
         robber_data['pan'] -= rob_amount
+        robbeder_data['pan'] += rob_amount
         update_user_signin_data(robber, r, robber_data)
+        update_user_signin_data(robbeder, r, robbeder_data)
         pan_usage_log(robber, rob_amount, robber_data['pan'], PAN_ROB_FAIL)
+        pan_usage_log(robbeder_data, rob_amount, robbeder_data['pan'], PAN_ROB_FAIL_GET)
         reset_value()
         return [False, rob_amount, robber_data['pan'], robbeder_data['pan']]
 
