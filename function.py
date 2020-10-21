@@ -572,7 +572,7 @@ def exp_enabled(group_id: int) -> bool:
     :return: True/False
     """
     exp_status = fetch_config(group_id, "exp")
-    if not exp_status:
+    if not bool(exp_status):
         return True
     else:
         if exp_status == 0:
