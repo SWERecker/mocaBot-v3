@@ -3,9 +3,9 @@ import hashlib
 import traceback
 
 from graia.application import GraiaMiraiApplication, Session
-from graia.application.event.mirai import BotInvitedJoinGroupRequestEvent, BotJoinGroupEvent
+from graia.application.event.mirai import BotInvitedJoinGroupRequestEvent, BotJoinGroupEvent, MemberLeaveEventKick
 from graia.application.group import Group, Member, MemberPerm
-from graia.application.message.elements.internal import Plain, Image, At, ImageType
+from graia.application.message.elements.internal import Plain, Image, At, ImageType, Voice
 from graia.broadcast import Broadcast
 from graia.application.entry import GroupMessage, MemberJoinEvent
 from function import *
@@ -218,7 +218,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                 await update_count(group_id, '可爱')
                 return
 
-            #   签到(EXPERIMENTAL)
+            #   签到
             #   权限：成员
             #   是否At机器人：是
             if "签到" in text:
@@ -289,17 +289,33 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
                         Plain(f'错误：参数错误')
                     ]))
                 return
+
+            #   语音 (EXPERIMENTAL)
+            #   权限：成员
+            #   是否At机器人：是
+            if "说话" in text or "语音" in text:
+                if is_in_user_cd(runtime_var, member.id, "voice"):
+                    return
+                voice_file = random.choice(os.listdir(os.path.join('resource', 'voice')))
+                with open(os.path.join('resource', 'voice', voice_file), 'rb')as voice_bin_file:
+                    voice = await app.uploadVoice(voice_bin_file)
+                await app.sendGroupMessage(group, MessageChain.create([
+                  voice
+                ]))
+                update_user_cd(runtime_var, member.id, "voice", 30)
+                return
+
             #   非必须管理员At操作结束
         else:
             #   At了他人的操作开始
 
             logger.debug(f"[{group_id}] @{at_target_name} {at_target}")
 
-            #   抢面包
+            #   抢面包 (DISABLED)
             #   权限：成员
             #   是否At机器人：否
             #   需At任意群员
-            if '抢面包' in text:
+            if '抢面包fghjsdrgsdjyu6' in text:
                 if member.id == at_target:
                     await app.sendGroupMessage(group, MessageChain.create([
                         At(target=member.id),
@@ -736,7 +752,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
         ]))
         return
 
-    #   百度翻译（EXPERIMENTAL）
+    #   百度翻译
     #   权限：成员
     #   是否At机器人：否
     if text.startswith("翻译") and not is_in_cd(runtime_var, group_id, "replyCD"):
@@ -971,6 +987,15 @@ async def bot_join_group(group: Group):
     await app.sendGroupMessage(group, MessageChain.create([
         Plain(f'大家好，我是mocaBot\n使用说明：http://mocabot.cn/')
     ]))
+
+
+@bcc.receiver(MemberLeaveEventKick)
+async def superman_kick_from_group(member: Member, group: Group):
+    # superman被踢自动退出
+    if is_superman(member.id):
+        print(f"Superman leaving {group.id}")
+        print(f"bye bye {group.id}")
+        await app.quit(group)
 
 
 app.launch_blocking()
