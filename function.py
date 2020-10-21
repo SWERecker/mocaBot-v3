@@ -573,7 +573,7 @@ def exp_enabled(group_id: int) -> bool:
     """
     exp_status = fetch_config(group_id, "exp")
     if not exp_status:
-        return False
+        return True
     else:
         if exp_status == 0:
             return False
