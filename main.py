@@ -62,7 +62,10 @@ dictionary = {
 }
 twice_lp_pan_amount = 2
 
-debug_mode = True
+if os.path.isfile('debug'):
+    debug_mode = True
+else:
+    debug_mode = False
 
 
 loop = asyncio.get_event_loop()
