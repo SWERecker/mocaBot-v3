@@ -561,3 +561,21 @@ def sort_dict(origin_dict: dict) -> dict:
     for og in temp:
         result[og] = origin_dict.get(og)
     return result
+
+
+def exp_enabled(group_id: int) -> bool:
+    """
+    检查是否启用实验功能
+
+    :param group_id: 群号
+
+    :return: True/False
+    """
+    exp_status = fetch_config(group_id, "exp")
+    if not exp_status:
+        return False
+    else:
+        if exp_status == 0:
+            return False
+        else:
+            return True

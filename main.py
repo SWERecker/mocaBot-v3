@@ -62,7 +62,7 @@ dictionary = {
 }
 twice_lp_pan_amount = 2
 
-debug_mode = False
+debug_mode = True
 
 
 loop = asyncio.get_event_loop()
@@ -221,7 +221,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
             #   签到
             #   权限：成员
             #   是否At机器人：是
-            if "签到" in text:
+            if "签到" in text and exp_enabled(group_id):
                 await signin(member.id, r, app, group)
                 return
 
@@ -444,6 +444,49 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
             is_superman(member.id):
         #   管理员普通操作开始
 
+        #   打开实验功能
+        #   权限：管理员/群主
+        #   是否At机器人：否
+        if text == '打开实验功能':
+            exp_status = fetch_config(group_id, "exp")
+            if not exp_status:
+                update_config(group_id, "exp", 1)
+                await app.sendGroupMessage(group, MessageChain.create([
+                    Plain(f"{group_id} 已启用实验功能")
+                ]))
+            else:
+                if exp_status == 0:
+                    update_config(group_id, "exp", 1)
+                    await app.sendGroupMessage(group, MessageChain.create([
+                        Plain(f"{group_id} 已启用实验功能")
+                    ]))
+                else:
+                    await app.sendGroupMessage(group, MessageChain.create([
+                        Plain(f"{group_id} 已启用过实验功能，请勿重复启用")
+                    ]))
+            return
+
+        #   关闭实验功能
+        #   权限：管理员/群主
+        #   是否At机器人：否
+        if text == '关闭实验功能':
+            exp_status = fetch_config(group_id, "exp")
+            if not exp_status:
+                await app.sendGroupMessage(group, MessageChain.create([
+                    Plain(f"{group_id} 未启用实验功能")
+                ]))
+            else:
+                if exp_status == 1:
+                    update_config(group_id, "exp", 0)
+                    await app.sendGroupMessage(group, MessageChain.create([
+                        Plain(f"{group_id} 已关闭实验功能")
+                    ]))
+                else:
+                    await app.sendGroupMessage(group, MessageChain.create([
+                        Plain(f"{group_id} 未启用实验功能")
+                    ]))
+            return
+
         #   设置图片cd
         #   权限：管理员/群主/superman
         #   是否At机器人：否
@@ -637,6 +680,8 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
     p_text = text.replace("老婆", "lp")
     if "来点" in p_text and "lp" in p_text:
         twice_lp = p_text.startswith("多")
+        if not exp_enabled(group_id):
+            twice_lp = False
         lp_name = fetch_lp(member.id)
         if lp_name == "NOT_DEFINED":
             await app.sendGroupMessage(group, MessageChain.create([
@@ -813,64 +858,66 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
             ]))
         return
 
-    #   买面包
-    #   权限：成员
-    #   是否At机器人：否
-    if text == '买面包' or text == '来点面包':
-        status = buy_pan(member.id, r)
-        if status[0]:
-            buy_amount = status[2]
-            user_amount = status[3]
-            await app.sendGroupMessage(group, MessageChain.create([
-                At(target=member.id),
-                Plain(f' 成功购买了{buy_amount}个面包哦~\n你现在有{user_amount}个面包啦~')
-            ]))
-        else:
-            buy_interval = status[1] + BUY_PAN_INTERVAL - get_timestamp()
-            if buy_interval < 60:
-                str_next_buy_time = f"{buy_interval}秒"
+    # 检查是否启用实验功能
+    if exp_enabled(group_id):
+        #   买面包
+        #   权限：成员
+        #   是否At机器人：否
+        if text == '买面包' or text == '来点面包':
+            status = buy_pan(member.id, r)
+            if status[0]:
+                buy_amount = status[2]
+                user_amount = status[3]
+                await app.sendGroupMessage(group, MessageChain.create([
+                    At(target=member.id),
+                    Plain(f' 成功购买了{buy_amount}个面包哦~\n你现在有{user_amount}个面包啦~')
+                ]))
             else:
-                if buy_interval % 60 == 0:
-                    str_next_buy_time = f"{buy_interval / 60}分钟"
+                buy_interval = status[1] + BUY_PAN_INTERVAL - get_timestamp()
+                if buy_interval < 60:
+                    str_next_buy_time = f"{buy_interval}秒"
                 else:
-                    str_next_buy_time = f"{int(buy_interval / 60)}分钟{buy_interval % 60}秒"
-            await app.sendGroupMessage(group, MessageChain.create([
-                At(target=member.id),
-                Plain(f' 还不能购买呢~\n还要等{str_next_buy_time}才能再买哦~')
-            ]))
-        return
+                    if buy_interval % 60 == 0:
+                        str_next_buy_time = f"{buy_interval / 60}分钟"
+                    else:
+                        str_next_buy_time = f"{int(buy_interval / 60)}分钟{buy_interval % 60}秒"
+                await app.sendGroupMessage(group, MessageChain.create([
+                    At(target=member.id),
+                    Plain(f' 还不能购买呢~\n还要等{str_next_buy_time}才能再买哦~')
+                ]))
+            return
 
-    #   查看面包
-    #   权限：成员
-    #   是否At机器人：否
-    if text == '我的面包' or text == '面包数量':
-        pan_amount = get_pan_amount(member.id, r)
-        if pan_amount == 0:
-            re_text = " 你还没有面包呢~"
-        else:
-            re_text = f' 你现在有{pan_amount}个面包呢~'
-        await app.sendGroupMessage(group, MessageChain.create([
-            At(target=member.id),
-            Plain(re_text)
-        ]))
-        return
+        #   查看面包
+        #   权限：成员
+        #   是否At机器人：否
+        if text == '我的面包' or text == '面包数量':
+            pan_amount = get_pan_amount(member.id, r)
+            if pan_amount == 0:
+                re_text = " 你还没有面包呢~"
+            else:
+                re_text = f' 你现在有{pan_amount}个面包呢~'
+            await app.sendGroupMessage(group, MessageChain.create([
+                At(target=member.id),
+                Plain(re_text)
+            ]))
+            return
 
-    #   吃面包
-    #   权限：成员
-    #   是否At机器人：否
-    if text == '吃面包' or text == '恰面包':
-        status = eat_pan(member.id, r)
-        if status[0]:
-            await app.sendGroupMessage(group, MessageChain.create([
-                At(target=member.id),
-                Plain(f" 你吃掉了{EAT_PAN_AMOUNT}个面包，还剩{status[1]}个面包哦~")
-            ]))
-        else:
-            await app.sendGroupMessage(group, MessageChain.create([
-                At(target=member.id),
-                Plain(f"呜呜呜，你似乎没有面包了呢~")
-            ]))
-        return
+        #   吃面包
+        #   权限：成员
+        #   是否At机器人：否
+        if text == '吃面包' or text == '恰面包':
+            status = eat_pan(member.id, r)
+            if status[0]:
+                await app.sendGroupMessage(group, MessageChain.create([
+                    At(target=member.id),
+                    Plain(f" 你吃掉了{EAT_PAN_AMOUNT}个面包，还剩{status[1]}个面包哦~")
+                ]))
+            else:
+                await app.sendGroupMessage(group, MessageChain.create([
+                    At(target=member.id),
+                    Plain(f"呜呜呜，你似乎没有面包了呢~")
+                ]))
+            return
 
     #   遍历查询是否在关键词列表中并发送图片
     #   权限：成员
@@ -893,6 +940,8 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
             if group_keywords[keys][e] in text:  # 若命中名称
                 if not is_in_cd(runtime_var, group_id, "replyCD") or is_superman(member.id):  # 判断是否在回复图片的cd中
                     twice_lp = p_text.startswith("多")
+                    if not exp_enabled(group_id):
+                        twice_lp = False
                     if twice_lp:
                         status = consume_pan(member.id, r, twice_lp_pan_amount, PAN_TWICE_LP_CONSUME)
                         if status[0]:
