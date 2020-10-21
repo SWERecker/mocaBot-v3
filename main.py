@@ -452,10 +452,9 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
         #   是否At机器人：否
         if text == '打开实验功能':
             exp_status = fetch_config(group_id, "exp")
-            if not bool(exp_status):
-                update_config(group_id, "exp", 1)
+            if exp_status is None:
                 await app.sendGroupMessage(group, MessageChain.create([
-                    Plain(f"{group_id} 已启用实验功能")
+                    Plain(f"{group_id} 已启用过实验功能，请勿重复启用")
                 ]))
             else:
                 if exp_status == 0:
@@ -474,7 +473,7 @@ async def group_message_handler(message: MessageChain, group: Group, member: Mem
         #   是否At机器人：否
         if text == '关闭实验功能':
             exp_status = fetch_config(group_id, "exp")
-            if not bool(exp_status):
+            if exp_status is None:
                 update_config(group_id, "exp", 0)
                 await app.sendGroupMessage(group, MessageChain.create([
                     Plain(f"{group_id} 未启用实验功能")
